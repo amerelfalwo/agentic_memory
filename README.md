@@ -76,21 +76,43 @@ docker run -d \
   semitechnologies/weaviate:latest
 ```
 
-### 2. Run the Streamlit UI
-Start the Streamlit application using `uv`:
+## Running the Modern Architecture (FastAPI + Next.js)
+
+### 1. Start the FastAPI Backend
+Start the high-performance Clean Architecture FastAPI backend server:
+```bash
+uv run uvicorn backend.app.presentation.main:app --host 0.0.0.0 --port 8000 --reload
+```
+Interactive API documentation will be available at:
+* Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+* ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+### 2. Start the Next.js Frontend
+In a new terminal, launch the Next.js web application:
+```bash
+cd frontend
+npm run dev
+```
+Open your browser and navigate to:
+* **[http://localhost:3000](http://localhost:3000)**
+
+### 3. Key Capabilities in the Next.js UI
+* **Memory Connection Topology Graph**: Interactive React Flow graph visualizing active data pulses between the Agent Core and the 4 memory tiers (Working, Episodic, Semantic, Procedural) plus the Security Guardrail and Tools.
+* **Turn-by-Turn Memory Evolution Inspector**: Filter by turn to see granular deltas:
+  * ⚡ **Working Memory**: Message counter, token delta, and compression/summarization triggers.
+  * 📖 **Episodic Memory**: Matched prior episodes, new reflection tags, what worked, and what to avoid.
+  * 📋 **Procedural Guidelines**: Line-by-line diff (`ADDED`, `MODIFIED`, `UNCHANGED`) tracking guideline evolution.
+  * 📚 **Semantic Retrieval**: Chunks retrieved from `CoALA_Paper.pdf` with similarity scores.
+* **Security Guardrail**: Intercepts prompt injection and prompt overrides in real-time.
+
+---
+
+## Legacy Streamlit Interface (Optional)
+If you wish to run the legacy Streamlit prototype:
 ```bash
 uv run streamlit run src/agentic_memory/app.py
 ```
-Or directly with Streamlit:
-```bash
-streamlit run src/agentic_memory/app.py
-```
-
-### 3. Access the Dashboard
-Open your browser and navigate to:
-```
-http://localhost:8501
-```
+Accessible at: [http://localhost:8501](http://localhost:8501)
 
 ---
 
@@ -98,15 +120,24 @@ http://localhost:8501
 
 ```
 agentic_memory/
-├── src/
-│   └── agentic_memory/
-│       ├── __init__.py
-│       └── app.py              # Main Streamlit application and LangGraph workflow
-├── langgraph/
+├── backend/                    # FastAPI Clean Architecture Backend
+│   └── app/
+│       ├── core/               # Config, logging, security guardrail, exceptions
+│       ├── domain/             # Entities, memory models, diff models, ports
+│       ├── application/        # DTOs, use cases, memory diff service, snapshot service
+│       ├── infrastructure/     # LangGraph runtime, Weaviate/fallback, Groq, repos
+│       └── presentation/       # API v1 routers (/chat, /memories, /rules)
+├── frontend/                   # Next.js 14+ Frontend (React 19, TypeScript, Tailwind)
+│   └── src/
+│       ├── app/                # App Router main page & layout
+│       ├── components/         # MemoryGraph (React Flow), MemoryDiffInspector, ChatPanel
+│       ├── lib/                # API client with SSE streaming support
+│       └── types/              # TypeScript contracts
+├── langgraph/                  # LangGraph reference notebooks & procedural guidelines
 │   ├── agentic_memory_langgraph.ipynb
-│   └── procedural_memory_lg.txt # Active procedural rules
-├── CoALA_Paper.pdf             # Reference academic paper on agent cognitive architecture
-├── pyproject.toml              # Dependencies and project metadata
-├── .env.example                # Template for environment configuration
+│   └── procedural_memory_lg.txt
+├── CoALA_Paper.pdf             # Academic paper reference
+├── pyproject.toml              # Python project metadata & dependencies
+├── docker-compose.yml          # Weaviate & Ollama configuration
 └── README.md                   # Project documentation
 ```
