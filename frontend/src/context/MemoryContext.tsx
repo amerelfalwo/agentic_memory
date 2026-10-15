@@ -150,10 +150,15 @@ export const MemoryProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
       );
 
+      const contentToDisplay =
+        result.response ||
+        (result.diff?.working_diff?.added_messages?.find((m: any) => m.role === 'assistant')?.content) ||
+        '';
+
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: result.response,
+        content: contentToDisplay,
         timestamp: new Date().toISOString(),
         turnId: result.turn_id,
         securityBlocked: result.security_blocked,

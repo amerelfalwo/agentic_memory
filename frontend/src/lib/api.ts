@@ -106,49 +106,73 @@ export async function sendChatMessage(
     let finalPayload: any = {};
 
     let buffer = '';
+
+    const processBlock = (block: string) => {
+      if (!block.trim()) return;
+      const blockLines = block.split('\n');
+      let eventType = 'message';
+      let dataStr = '';
+
+      for (const rawLine of blockLines) {
+        const line = rawLine.trim();
+        if (line.startsWith('event:')) {
+          eventType = line.replace('event:', '').trim();
+        } else if (line.startsWith('data:')) {
+          dataStr = line.replace('data:', '').trim();
+        }
+      }
+
+      if (!dataStr) return;
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (eventType === 'status') {
+          if (onStatus) onStatus(parsed.message || parsed.status);
+        } else if (eventType === 'memory_access') {
+          if (onStatus) onStatus('Synchronizing multi-tier memories...');
+        } else if (eventType === 'token') {
+          if (parsed.token) {
+            accumulatedText += parsed.token;
+            onToken(parsed.token);
+          }
+        } else if (eventType === 'turn_diff') {
+          currentDiff = parsed as TurnMemoryDiff;
+          if (onDiff) onDiff(currentDiff);
+        } else if (eventType === 'done') {
+          finalPayload = parsed;
+          if (parsed.full_response && !accumulatedText) {
+            accumulatedText = parsed.full_response;
+            onToken(parsed.full_response);
+          }
+        }
+      } catch (e) {
+        // Non-JSON SSE line or comment
+      }
+    };
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n\n');
-      buffer = lines.pop() || '';
+      // Normalize CRLF to LF to handle Cloudflare & Windows proxies
+      buffer = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const blocks = buffer.split('\n\n');
+      buffer = blocks.pop() || '';
 
-      for (const block of lines) {
-        if (!block.trim()) continue;
-        const blockLines = block.split('\n');
-        let eventType = 'message';
-        let dataStr = '';
-
-        for (const line of blockLines) {
-          if (line.startsWith('event:')) {
-            eventType = line.replace('event:', '').trim();
-          } else if (line.startsWith('data:')) {
-            dataStr = line.replace('data:', '').trim();
-          }
-        }
-
-        if (!dataStr) continue;
-
-        try {
-          const parsed = JSON.parse(dataStr);
-          if (eventType === 'status') {
-            if (onStatus) onStatus(parsed.message || parsed.status);
-          } else if (eventType === 'memory_access') {
-            if (onStatus) onStatus('Synchronizing multi-tier memories...');
-          } else if (eventType === 'token') {
-            accumulatedText += parsed.token;
-            onToken(parsed.token);
-          } else if (eventType === 'turn_diff') {
-            currentDiff = parsed as TurnMemoryDiff;
-            if (onDiff) onDiff(currentDiff);
-          } else if (eventType === 'done') {
-            finalPayload = parsed;
-          }
-        } catch (e) {
-          // Non-JSON SSE line or formatting
-        }
+      for (const block of blocks) {
+        processBlock(block);
       }
+    }
+
+    // Process any remaining data in buffer after stream ends
+    if (buffer.trim()) {
+      processBlock(buffer);
+    }
+
+    // Safety net: if accumulatedText is still empty, fallback to full_response from done event
+    if (!accumulatedText && finalPayload.full_response) {
+      accumulatedText = finalPayload.full_response;
     }
 
     return {

@@ -89,7 +89,8 @@ async def execute_chat_stream(
                 "session_id": turn_result["session_id"],
                 "turn_id": turn_result["turn_id"],
                 "security_blocked": turn_result["security_blocked"],
-                "blocked_reason": turn_result["blocked_reason"]
+                "blocked_reason": turn_result["blocked_reason"],
+                "full_response": turn_result["response"]
             })
         }
 
