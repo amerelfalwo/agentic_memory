@@ -13,8 +13,8 @@ from backend.app.presentation.dependencies import get_vector_db, get_llm_service
 logger = get_logger("main")
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="Enterprise Cognitive Memory AI Engine based on CoALA Architecture, LangGraph, and FastAPI.",
+    title="Mnemos",
+    description="Mnemos Enterprise Cognitive Memory AI Engine based on CoALA Architecture, LangGraph, and FastAPI.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"

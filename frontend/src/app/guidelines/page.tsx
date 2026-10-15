@@ -97,7 +97,7 @@ export default function GuidelinesPage() {
               </h1>
             </div>
             <p className="text-xs text-[#737B74] mt-1 max-w-xl">
-              These guidelines are injected into the agent system prompt for every interaction. They govern response tone, length, empathetic framing, and active recall.
+              These guidelines are injected into Mnemos&apos;s system prompt for every interaction. They govern response tone, length, empathetic framing, and active recall.
             </p>
           </div>
 

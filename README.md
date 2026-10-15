@@ -1,6 +1,6 @@
-# Agentic Memory AI Engine
+# Mnemos — Cognitive Memory AI Engine
 
-The Agentic Memory AI Engine is an intelligent agent framework built on Cognitive Architectures for Language Agents (CoALA). It integrates multi-tiered memory systems—procedural, episodic, semantic, and working memory—with security guardrails, LangGraph workflow orchestration, and Weaviate vector search to enable stateful, context-aware AI interactions.
+**Mnemos** is an intelligent cognitive agent framework built on Cognitive Architectures for Language Agents (CoALA). It integrates multi-tiered memory systems—procedural, episodic, semantic, and working memory—with security guardrails, LangGraph workflow orchestration, and Weaviate vector search to enable stateful, context-aware AI interactions.
 
 ---
 

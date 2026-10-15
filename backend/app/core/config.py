@@ -8,7 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 load_dotenv(ROOT_DIR / ".env")
 
 class Settings(BaseModel):
-    PROJECT_NAME: str = "Agentic Memory AI Engine"
+    PROJECT_NAME: str = "Mnemos — Cognitive Memory AI Engine"
     API_V1_PREFIX: str = "/api/v1"
     GROQ_API_KEY: str = Field(default_factory=lambda: os.getenv("GROQ_API_KEY", ""))
     MODEL_NAME: str = Field(default_factory=lambda: os.getenv("model", "groq:qwen/qwen3.8-27b").replace("groq:", ""))

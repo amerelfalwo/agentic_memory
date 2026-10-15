@@ -3,7 +3,7 @@ services:
   # 1. FastAPI Backend Cognitive Memory AI Engine
   # -------------------------------------------------------------
   - type: web
-    name: agentic-memory-backend
+    name: mnemos-backend
     runtime: python
     region: frankfurt
     plan: free

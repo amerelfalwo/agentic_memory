@@ -29,7 +29,7 @@ def get_memory_topology(
     nodes: List[TopologyNode] = [
         TopologyNode(
             id="agent-core",
-            label="Memory Agent (Core LLM)",
+            label="Mnemos Core Agent (LLM)",
             type="agent",
             status="active" if llm_connected else "simulated",
             details={

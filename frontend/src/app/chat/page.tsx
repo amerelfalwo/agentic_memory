@@ -111,10 +111,10 @@ export default function ChatPage() {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <h2 className="text-base font-semibold text-[#242A25] tracking-tight">
-                  Cognitive Memory Interactive Dialogue
+                  Mnemos Cognitive Dialogue
                 </h2>
                 <p className="text-xs text-[#737B74] mt-1 max-w-md mx-auto leading-relaxed">
-                  Engage with the CoALA architecture agent. The system orchestrates working, episodic, semantic, and procedural memory to ground every response.
+                  Engage with Mnemos, an advanced cognitive agent built on the CoALA architecture. The system orchestrates working, episodic, semantic, and procedural memory to ground every response.
                 </p>
 
                 <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left max-w-xl mx-auto">
@@ -158,7 +158,7 @@ export default function ChatPage() {
                     {/* Header line for message */}
                     <div className="flex items-center justify-between text-[11px] text-[#737B74] mb-1.5 pb-1 border-b border-[#DFE5DD]/60">
                       <span className="font-semibold text-[#285943]">
-                        {isUser ? 'You' : 'Agentic Memory'}
+                        {isUser ? 'You' : 'Mnemos'}
                       </span>
                       <div className="flex items-center space-x-2">
                         {msg.turnId && <span>Turn #{msg.turnId}</span>}

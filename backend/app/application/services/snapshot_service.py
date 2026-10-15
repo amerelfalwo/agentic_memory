@@ -120,7 +120,7 @@ class SnapshotCoordinatorService:
         what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear factual responses."
         what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations."
 
-        sys_content = f"""You are an advanced Agentic Memory AI Assistant built on the CoALA framework.
+        sys_content = f"""You are Mnemos, an advanced Cognitive Memory AI Agent built on the CoALA framework.
 You recall past similar interactions from episodic memory:
 - Matched Prior Case: {prior_convo}
 - What Worked Well: {what_worked}

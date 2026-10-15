@@ -1,4 +1,4 @@
-# 🚀 دليل رفع مشروع Agentic Memory AI Engine على Render وإعداد قواعد البيانات
+# 🚀 دليل رفع مشروع Mnemos Cognitive Memory AI Engine على Render وإعداد قواعد البيانات
 
 يشرح هذا الدليل بالتفصيل خطوات رفع **الـ Backend (FastAPI)** و**قواعد البيانات (Vector DB & Relational DB)** على منصة **Render**، وربطها مع الـ Frontend المرفوع على **Vercel**.
 

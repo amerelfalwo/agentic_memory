@@ -35,11 +35,11 @@ export const AppHeader: React.FC = () => {
         {/* Brand & Framework */}
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-md bg-[#285943] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-sm">
-            AM
+            MN
           </div>
           <div className="flex items-center space-x-2">
             <span className="font-semibold text-[#242A25] tracking-tight text-sm sm:text-base">
-              Agentic Memory
+              Mnemos
             </span>
             <span className="text-[11px] font-medium bg-[#E8F0E8] text-[#285943] px-2 py-0.5 rounded border border-[#DFE5DD]">
               CoALA

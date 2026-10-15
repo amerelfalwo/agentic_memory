@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Agentic Memory FastAPI Backend
+# Multi-stage Dockerfile for Mnemos Cognitive Memory FastAPI Backend
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
