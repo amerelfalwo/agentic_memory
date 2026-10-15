@@ -205,19 +205,27 @@ export default function ChatPage() {
             })}
 
             {/* Streaming Assistant Response */}
-            {isStreaming && streamingContent && (
+            {isStreaming && (
               <div className="flex flex-col items-start">
                 <div className="rounded-lg bg-[#FFFFFF] border border-[#DFE5DD] text-[#242A25] p-4 shadow-xs w-full max-w-full sm:max-w-[85%]">
                   <div className="flex items-center justify-between text-[11px] text-[#737B74] mb-1.5 pb-1 border-b border-[#DFE5DD]/60">
-                    <span className="font-semibold text-[#285943]">Agentic Memory</span>
-                    <span className="text-[10px] text-[#285943] bg-[#E8F0E8] px-1.5 py-0.5 rounded">
-                      Streaming
+                    <span className="font-semibold text-[#285943]">Mnemos</span>
+                    <span className="text-[10px] text-[#285943] bg-[#E8F0E8] px-1.5 py-0.5 rounded flex items-center space-x-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#285943] animate-pulse"></span>
+                      <span>Thinking & Recalling...</span>
                     </span>
                   </div>
-                  <div className="prose-editorial">
-                    <ReactMarkdown>{streamingContent}</ReactMarkdown>
-                    <span className="inline-block w-1.5 h-3 bg-[#285943] ml-1 animate-pulse align-middle" />
-                  </div>
+                  {streamingContent ? (
+                    <div className="prose-editorial">
+                      <ReactMarkdown>{streamingContent}</ReactMarkdown>
+                      <span className="inline-block w-1.5 h-3 bg-[#285943] ml-1 animate-pulse align-middle" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2 text-xs text-[#737B74] py-2">
+                      <span className="w-2 h-2 rounded-full bg-[#285943] animate-ping" />
+                      <span className="animate-pulse">{statusText || 'Connecting to CoALA memory subsystems...'}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

@@ -93,7 +93,14 @@ async def execute_chat_stream(
             })
         }
 
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(
+        event_generator(),
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @router.post("/chat/reset", response_model=ResetSessionResponse, summary="Reset conversation session memory")
 def reset_session(

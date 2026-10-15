@@ -59,6 +59,16 @@ async def domain_exception_handler(request: Request, exc: DomainException):
 # Include API v1 router
 app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
 
+@app.get("/", tags=["Root"])
+def root():
+    return {
+        "service": settings.PROJECT_NAME,
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+        "frontend": "https://rapid-geode-upm1g2t.vercel.app"
+    }
+
 @app.get("/health", tags=["Health"])
 @app.get(f"{settings.API_V1_PREFIX}/health", tags=["Health"])
 def health_check():

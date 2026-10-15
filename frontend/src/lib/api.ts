@@ -5,7 +5,20 @@ import {
   FullMemorySnapshot
 } from '../types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mnemos-backend-ehi5.onrender.com/api/v1';
+export function getApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+      return 'http://localhost:8000/api/v1';
+    }
+  }
+  return 'https://mnemos-backend-ehi5.onrender.com/api/v1';
+}
+
+const API_BASE = getApiBase();
 
 export async function fetchHealth() {
   const res = await fetch(`${API_BASE}/health`, { cache: 'no-store' });
