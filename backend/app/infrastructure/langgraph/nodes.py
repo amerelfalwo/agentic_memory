@@ -61,9 +61,8 @@ class NodeFactory:
     def summarize_history(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
         if len(messages) <= 4:
-            return {"messages": messages}
+            return {}
         
-        system_msg = messages[0]
         to_summarize = messages[1:-2]
         formatted = format_conversation_for_summary(to_summarize)
         summary_prompt = f"Summarize the following conversation concisely while preserving key details and agent context:\n\n{formatted}"
@@ -72,7 +71,7 @@ class NodeFactory:
         summary_msg = SystemMessage(content=f"Summary of prior conversation: {summary_text}")
         
         logger.info("Summarization triggered: condensed conversation history.")
-        return {"messages": [system_msg, summary_msg] + messages[-2:]}
+        return {"messages": [summary_msg]}
 
     def memory_agent(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
@@ -81,18 +80,18 @@ class NodeFactory:
             try:
                 llm_with_tools = underlying.bind_tools(self.tools)
                 response = llm_with_tools.invoke(messages)
-                return {"messages": messages + [response]}
+                return {"messages": [response]}
             except Exception as e:
                 logger.warning(f"Tool-bind invoke issue ({e}), falling back to direct LLM invoke.")
                 try:
                     direct_res = underlying.invoke(messages)
-                    return {"messages": messages + [direct_res]}
+                    return {"messages": [direct_res]}
                 except Exception as inner_e:
                     logger.error(f"Direct invoke failed: {inner_e}")
         
         # Fallback invocation
         response = self.llm_service.invoke(messages)
-        return {"messages": messages + [response]}
+        return {"messages": [response]}
 
     def update_memory(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])

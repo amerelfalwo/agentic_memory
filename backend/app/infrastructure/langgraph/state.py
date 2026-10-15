@@ -1,8 +1,9 @@
 from typing_extensions import TypedDict
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Annotated
+from langgraph.graph.message import add_messages
 
 class AgentState(TypedDict, total=False):
-    messages: List[Any]
+    messages: Annotated[List[Any], add_messages]
     semantic_memory: str
     procedural_memory: str
     prior_conversations: List[str]

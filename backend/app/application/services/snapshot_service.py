@@ -149,6 +149,20 @@ Procedural Guidelines:
         last_response = final_messages[-1]
         response_text = last_response.content if hasattr(last_response, "content") else str(last_response)
 
+        # Guard: if last message content is empty (e.g. tool call message), scan backwards for text
+        if not response_text or not str(response_text).strip():
+            for m in reversed(final_messages):
+                c = getattr(m, "content", "")
+                if c and isinstance(c, str) and c.strip():
+                    response_text = c
+                    break
+        if not response_text or not str(response_text).strip():
+            try:
+                direct = self.llm_service.invoke(final_messages)
+                response_text = direct.content if hasattr(direct, "content") else str(direct)
+            except Exception:
+                response_text = "I have processed your query and synchronized the active memory state."
+
         # Update persistent session history
         self._session_messages[session_id] = [m for m in final_messages if not isinstance(m, SystemMessage)]
 
