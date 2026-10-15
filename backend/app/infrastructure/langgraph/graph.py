@@ -35,8 +35,9 @@ def create_memory_graph(node_factory: NodeFactory):
     builder.add_conditional_edges(
         "memory_agent",
         tools_condition,
-        {"tools": "mcp_tools_node", END: END}
+        {"tools": "mcp_tools_node", END: "update_memory"}
     )
     builder.add_edge("mcp_tools_node", "memory_agent")
+    builder.add_edge("update_memory", END)
 
     return builder.compile()

@@ -203,7 +203,7 @@ const DEFAULT_TOPOLOGY_NODES: TopologyNode[] = [
   },
   {
     id: 'tools-node',
-    label: '🔧 External Tools / MCP',
+    label: '🔧 MCP / External Tools',
     type: 'tools',
     status: 'active',
     details: { registered_tools: ['search_knowledge_base'] }
@@ -211,12 +211,12 @@ const DEFAULT_TOPOLOGY_NODES: TopologyNode[] = [
 ];
 
 const DEFAULT_TOPOLOGY_EDGES = [
-  { id: 'e-guard-agent', source: 'guardrail-node', target: 'agent-core', label: 'Input Guardrail Check', animated: true, active: true },
+  { id: 'e-guard-agent', source: 'guardrail-node', target: 'agent-core', label: 'Input Interception & Validation', animated: true, active: true },
   { id: 'e-agent-working', source: 'agent-core', target: 'working-memory', label: 'Read Buffer / Append Dialogue', animated: true, active: true },
-  { id: 'e-agent-episodic', source: 'agent-core', target: 'episodic-memory', label: 'Recall Reflections / Store Learnings', animated: true, active: true },
+  { id: 'e-agent-episodic', source: 'agent-core', target: 'episodic-memory', label: 'Reflections / Store Learnings', animated: true, active: true },
   { id: 'e-agent-semantic', source: 'agent-core', target: 'semantic-memory', label: 'Hybrid Vector Retrieval', animated: true, active: true },
-  { id: 'e-agent-procedural', source: 'agent-core', target: 'procedural-memory', label: 'Read Guidelines / Synthesize Evolution', animated: true, active: true },
-  { id: 'e-agent-tools', source: 'agent-core', target: 'tools-node', label: 'Tool Dispatch', animated: false, active: false }
+  { id: 'e-agent-procedural', source: 'agent-core', target: 'procedural-memory', label: 'Guidelines / Synthesize Evolution', animated: true, active: true },
+  { id: 'e-agent-tools', source: 'agent-core', target: 'tools-node', label: 'Tool Call Dispatch', animated: false, active: false }
 ];
 
 const NODE_POSITIONS: Record<string, { x: number; y: number }> = {

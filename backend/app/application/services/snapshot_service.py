@@ -126,14 +126,28 @@ class SnapshotCoordinatorService:
         what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear factual responses."
         what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations."
 
+        semantic_text_parts = []
+        if semantic_chunks:
+            for idx, sc in enumerate(semantic_chunks):
+                txt = getattr(sc, "text", str(sc))
+                score = getattr(sc, "score", None)
+                score_str = f" (relevance: {score:.2f})" if score is not None else ""
+                semantic_text_parts.append(f"- Chunk {idx + 1}{score_str}: {txt}")
+        semantic_summary = "\n".join(semantic_text_parts) if semantic_text_parts else "No direct semantic chunks retrieved."
+
         sys_content = f"""You are Mnemos, an advanced Cognitive Memory AI Agent built on the CoALA framework.
-You recall past similar interactions from episodic memory:
+
+[Episodic Memory (Past Learnings & Experiences)]
 - Matched Prior Case: {prior_convo}
 - What Worked Well: {what_worked}
 - What to Avoid: {what_to_avoid}
 
-Procedural Guidelines:
-{current_procedural}"""
+[Procedural Memory Guidelines]
+{current_procedural}
+
+[Semantic Memory Grounding (CoALA Knowledge Base)]
+{semantic_summary}
+"""
 
         system_msg = SystemMessage(content=sys_content)
         user_msg = HumanMessage(content=user_input)
@@ -144,9 +158,18 @@ Procedural Guidelines:
         # 5. Security & LangGraph Execution
         state = {
             "messages": current_messages,
+            "semantic_memory": semantic_summary,
+            "procedural_memory": current_procedural,
+            "prior_conversations": [prior_convo] if prior_convo != "N/A" else [],
+            "what_worked": [what_worked],
+            "what_to_avoid": [what_to_avoid],
             "end": False,
             "session_id": session_id,
-            "turn_id": turn_id
+            "turn_id": turn_id,
+            "retrieved_chunks": [
+                c.model_dump() if hasattr(c, "model_dump") else (c.dict() if hasattr(c, "dict") else {"text": getattr(c, "text", str(c))})
+                for c in semantic_chunks
+            ] if semantic_chunks else []
         }
 
         # Run through LangGraph

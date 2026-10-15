@@ -124,7 +124,7 @@ def get_memory_topology(
             id="e-agent-episodic",
             source="agent-core",
             target="episodic-memory",
-            label="Recall Reflections / Store Learnings",
+            label="Reflections / Store Learnings",
             animated=True,
             active=turn_id > 0
         ),
@@ -140,7 +140,7 @@ def get_memory_topology(
             id="e-agent-procedural",
             source="agent-core",
             target="procedural-memory",
-            label="Read Guidelines / Synthesize Evolution",
+            label="Guidelines / Synthesize Evolution",
             animated=True,
             active=True
         ),

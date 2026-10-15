@@ -98,33 +98,38 @@ class NodeFactory:
         if len(messages) < 2:
             return {}
 
-        # Format conversation without initial system/semantic prompts
-        filtered_msgs = [m for m in messages if not isinstance(m, SystemMessage)]
-        conv_text = format_conversation_for_summary(filtered_msgs)
+        try:
+            # Format conversation without initial system/semantic prompts
+            filtered_msgs = [m for m in messages if not isinstance(m, SystemMessage)]
+            conv_text = format_conversation_for_summary(filtered_msgs)
 
-        # 1. Reflect episodic memory
-        reflection = self.llm_service.reflect_conversation(conv_text)
-        episodic_record = EpisodicRecord(
-            conversation=conv_text,
-            context_tags=reflection.get("context_tags", ["general"]),
-            conversation_summary=reflection.get("conversation_summary", "Discussion summary"),
-            what_worked=reflection.get("what_worked", "Clear assistance"),
-            what_to_avoid=reflection.get("what_to_avoid", "Vague answers")
-        )
-        self.vector_db.insert_episodic(episodic_record)
+            # 1. Reflect episodic memory
+            reflection = self.llm_service.reflect_conversation(conv_text)
+            episodic_record = EpisodicRecord(
+                conversation=conv_text,
+                context_tags=reflection.get("context_tags", ["general"]),
+                conversation_summary=reflection.get("conversation_summary", "Discussion summary"),
+                what_worked=reflection.get("what_worked", "Clear assistance"),
+                what_to_avoid=reflection.get("what_to_avoid", "Vague answers")
+            )
+            self.vector_db.insert_episodic(episodic_record)
 
-        # 2. Refine procedural guidelines
-        current_proc = self.procedural_repo.get_snapshot().raw_text
-        updated_rules = self.llm_service.synthesize_procedural_rules(
-            current_rules=current_proc,
-            what_worked=episodic_record.what_worked,
-            what_to_avoid=episodic_record.what_to_avoid
-        )
-        if updated_rules != current_proc:
-            self.procedural_repo.save_rules(updated_rules)
-            logger.info("Updated procedural memory guidelines following reflection.")
+            # 2. Refine procedural guidelines
+            current_proc = self.procedural_repo.get_snapshot().raw_text
+            updated_rules = self.llm_service.synthesize_procedural_rules(
+                current_rules=current_proc,
+                what_worked=episodic_record.what_worked,
+                what_to_avoid=episodic_record.what_to_avoid
+            )
+            if updated_rules != current_proc:
+                self.procedural_repo.save_rules(updated_rules)
+                logger.info("Updated procedural memory guidelines following reflection.")
 
-        return {
-            "what_worked": state.get("what_worked", []) + [episodic_record.what_worked],
-            "what_to_avoid": state.get("what_to_avoid", []) + [episodic_record.what_to_avoid]
-        }
+            return {
+                "what_worked": state.get("what_worked", []) + [episodic_record.what_worked],
+                "what_to_avoid": state.get("what_to_avoid", []) + [episodic_record.what_to_avoid]
+            }
+        except Exception as e:
+            logger.warning(f"update_memory reflection encountered an error: {e}")
+            return {}
+
