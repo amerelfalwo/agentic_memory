@@ -91,7 +91,7 @@ export default function GuidelinesPage() {
         <div className="bg-[#FFFFFF] p-6 rounded-xl border border-[#DFE5DD] shadow-xs flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <ScrollText className="w-5 h-5 text-[#285943]" />
+              <ScrollText className="w-5 h-5 text-[#0F766E]" />
               <h1 className="text-lg font-bold text-[#242A25] tracking-tight">
                 Procedural Guidelines Manager
               </h1>
@@ -104,16 +104,16 @@ export default function GuidelinesPage() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setViewMode(viewMode === 'cards' ? 'raw' : 'cards')}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-[#F6F6F0] hover:bg-[#E8F0E8] border border-[#DFE5DD] text-xs font-medium text-[#242A25] transition-colors"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-[#F6F6F0] hover:bg-[#E6F7F5] border border-[#DFE5DD] text-xs font-medium text-[#242A25] transition-colors"
             >
               {viewMode === 'cards' ? (
                 <>
-                  <FileCode className="w-3.5 h-3.5 text-[#285943]" />
+                  <FileCode className="w-3.5 h-3.5 text-[#0F766E]" />
                   <span>Raw Text Editor</span>
                 </>
               ) : (
                 <>
-                  <ListFilter className="w-3.5 h-3.5 text-[#285943]" />
+                  <ListFilter className="w-3.5 h-3.5 text-[#0F766E]" />
                   <span>Structured Cards</span>
                 </>
               )}
@@ -122,7 +122,7 @@ export default function GuidelinesPage() {
             <button
               onClick={handleSave}
               disabled={saving || loading}
-              className="flex items-center space-x-1.5 px-4 py-1.5 rounded-md bg-[#285943] hover:bg-[#1E4433] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
+              className="flex items-center space-x-1.5 px-4 py-1.5 rounded-md bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50"
             >
               {saving ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -138,8 +138,8 @@ export default function GuidelinesPage() {
 
         {/* Success / Error Notification */}
         {saveSuccess && (
-          <div className="p-3 bg-[#E8F0E8] border border-[#285943]/30 rounded-lg text-xs text-[#285943] flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 text-[#285943]" />
+          <div className="p-3 bg-[#E6F7F5] border border-[#0F766E]/30 rounded-lg text-xs text-[#0F766E] flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-[#0F766E]" />
             <span>Guidelines updated successfully. Active in the next conversation turn.</span>
           </div>
         )}
@@ -160,7 +160,7 @@ export default function GuidelinesPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Filter guidelines by keywords..."
-                className="w-full bg-[#FFFFFF] border border-[#DFE5DD] rounded-lg pl-9 pr-3 py-1.5 text-xs text-[#242A25] placeholder-[#737B74] focus:outline-none focus:border-[#285943] focus:ring-1 focus:ring-[#285943] transition-all"
+                className="w-full bg-[#FFFFFF] border border-[#DFE5DD] rounded-lg pl-9 pr-3 py-1.5 text-xs text-[#242A25] placeholder-[#737B74] focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] transition-all"
               />
             </div>
             <span className="text-xs text-[#737B74]">
@@ -172,7 +172,7 @@ export default function GuidelinesPage() {
         {/* Content View */}
         {loading ? (
           <div className="bg-[#FFFFFF] p-12 rounded-xl border border-[#DFE5DD] text-center text-xs text-[#737B74]">
-            <RefreshCw className="w-6 h-6 text-[#285943] animate-spin mx-auto mb-2" />
+            <RefreshCw className="w-6 h-6 text-[#0F766E] animate-spin mx-auto mb-2" />
             <span>Loading active procedural guidelines...</span>
           </div>
         ) : viewMode === 'raw' ? (
@@ -186,7 +186,7 @@ export default function GuidelinesPage() {
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               rows={14}
-              className="w-full bg-[#F6F6F0] p-4 rounded-lg border border-[#DFE5DD] font-mono text-xs text-[#242A25] leading-relaxed focus:outline-none focus:border-[#285943] focus:ring-1 focus:ring-[#285943] resize-none transition-all"
+              className="w-full bg-[#F6F6F0] p-4 rounded-lg border border-[#DFE5DD] font-mono text-xs text-[#242A25] leading-relaxed focus:outline-none focus:border-[#0F766E] focus:ring-1 focus:ring-[#0F766E] resize-none transition-all"
             />
           </div>
         ) : (
@@ -200,11 +200,11 @@ export default function GuidelinesPage() {
               filteredRules.map((rule) => (
                 <div
                   key={rule.index}
-                  className="bg-[#FFFFFF] p-4 rounded-xl border border-[#DFE5DD] shadow-xs hover:border-[#8DAA91] transition-all"
+                  className="bg-[#FFFFFF] p-4 rounded-xl border border-[#DFE5DD] shadow-xs hover:border-[#14B8A6] transition-all"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start space-x-3">
-                      <span className="px-2 py-0.5 rounded bg-[#E8F0E8] text-[#285943] font-mono text-xs font-semibold shrink-0">
+                      <span className="px-2 py-0.5 rounded bg-[#E6F7F5] text-[#0F766E] font-mono text-xs font-semibold shrink-0">
                         #{rule.index}
                       </span>
                       <div className="space-y-1">
@@ -212,7 +212,7 @@ export default function GuidelinesPage() {
                           value={rule.instruction}
                           onChange={(e) => handleRuleChange(rule.index, e.target.value)}
                           rows={2}
-                          className="w-full bg-transparent text-xs font-medium text-[#242A25] leading-relaxed border-b border-transparent hover:border-[#DFE5DD] focus:border-[#285943] focus:outline-none resize-none"
+                          className="w-full bg-transparent text-xs font-medium text-[#242A25] leading-relaxed border-b border-transparent hover:border-[#DFE5DD] focus:border-[#0F766E] focus:outline-none resize-none"
                         />
                         {rule.rationale && (
                           <div className="text-[11px] text-[#737B74] italic">
@@ -222,7 +222,7 @@ export default function GuidelinesPage() {
                       </div>
                     </div>
 
-                    <span className="px-2 py-0.5 rounded-full bg-[#E8F0E8] text-[#285943] text-[10px] font-medium shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-[#E6F7F5] text-[#0F766E] text-[10px] font-medium shrink-0">
                       Active
                     </span>
                   </div>

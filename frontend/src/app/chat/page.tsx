@@ -94,8 +94,8 @@ export default function ChatPage() {
           </div>
 
           {statusText && (
-            <div className="flex items-center space-x-1.5 text-[11px] text-[#285943] bg-[#E8F0E8] px-2.5 py-0.5 rounded border border-[#DFE5DD]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#285943] animate-pulse"></span>
+            <div className="flex items-center space-x-1.5 text-[11px] text-[#0F766E] bg-[#E6F7F5] px-2.5 py-0.5 rounded border border-[#DFE5DD]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0F766E] animate-pulse"></span>
               <span>{statusText}</span>
             </div>
           )}
@@ -107,7 +107,7 @@ export default function ChatPage() {
             {/* Empty State */}
             {messages.length === 0 && !streamingContent && (
               <div className="py-12 px-4 text-center">
-                <div className="w-10 h-10 rounded-full bg-[#E8F0E8] text-[#285943] mx-auto flex items-center justify-center mb-3 border border-[#DFE5DD]">
+                <div className="w-10 h-10 rounded-full bg-[#E6F7F5] text-[#0F766E] mx-auto flex items-center justify-center mb-3 border border-[#DFE5DD]">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <h2 className="text-base font-semibold text-[#242A25] tracking-tight">
@@ -123,9 +123,9 @@ export default function ChatPage() {
                       key={idx}
                       onClick={() => handleSendMessage(q)}
                       disabled={isStreaming}
-                      className="p-3 rounded-lg bg-[#FFFFFF] hover:bg-[#E8F0E8] border border-[#DFE5DD] text-xs text-[#242A25] transition-all text-left shadow-2xs hover:border-[#8DAA91] cursor-pointer group"
+                      className="p-3 rounded-lg bg-[#FFFFFF] hover:bg-[#E6F7F5] border border-[#DFE5DD] text-xs text-[#242A25] transition-all text-left shadow-2xs hover:border-[#14B8A6] cursor-pointer group"
                     >
-                      <div className="text-[10px] font-medium text-[#8DAA91] group-hover:text-[#285943] mb-0.5">
+                      <div className="text-[10px] font-medium text-[#14B8A6] group-hover:text-[#0F766E] mb-0.5">
                         Suggested Query #{idx + 1}
                       </div>
                       <div className="leading-snug">{q}</div>
@@ -148,7 +148,7 @@ export default function ChatPage() {
                       rounded-lg text-sm transition-shadow max-w-full sm:max-w-[85%]
                       ${
                         isUser
-                          ? 'bg-[#E8F0E8] border border-[#DFE5DD] text-[#242A25] px-4 py-3 shadow-xs'
+                          ? 'bg-[#E6F7F5] border border-[#DFE5DD] text-[#242A25] px-4 py-3 shadow-xs'
                           : msg.securityBlocked
                           ? 'bg-[#FFF5F5] border border-[#B54747]/30 text-[#242A25] p-4 shadow-xs'
                           : 'bg-[#FFFFFF] border border-[#DFE5DD] text-[#242A25] p-4 shadow-xs w-full'
@@ -157,7 +157,7 @@ export default function ChatPage() {
                   >
                     {/* Header line for message */}
                     <div className="flex items-center justify-between text-[11px] text-[#737B74] mb-1.5 pb-1 border-b border-[#DFE5DD]/60">
-                      <span className="font-semibold text-[#285943]">
+                      <span className="font-semibold text-[#0F766E]">
                         {isUser ? 'You' : 'Mnemos'}
                       </span>
                       <div className="flex items-center space-x-2">
@@ -169,7 +169,7 @@ export default function ChatPage() {
                             title="Copy response"
                           >
                             {copiedId === msg.id ? (
-                              <Check className="w-3 h-3 text-[#285943]" />
+                              <Check className="w-3 h-3 text-[#0F766E]" />
                             ) : (
                               <Copy className="w-3 h-3" />
                             )}
@@ -209,20 +209,20 @@ export default function ChatPage() {
               <div className="flex flex-col items-start">
                 <div className="rounded-lg bg-[#FFFFFF] border border-[#DFE5DD] text-[#242A25] p-4 shadow-xs w-full max-w-full sm:max-w-[85%]">
                   <div className="flex items-center justify-between text-[11px] text-[#737B74] mb-1.5 pb-1 border-b border-[#DFE5DD]/60">
-                    <span className="font-semibold text-[#285943]">Mnemos</span>
-                    <span className="text-[10px] text-[#285943] bg-[#E8F0E8] px-1.5 py-0.5 rounded flex items-center space-x-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#285943] animate-pulse"></span>
+                    <span className="font-semibold text-[#0F766E]">Mnemos</span>
+                    <span className="text-[10px] text-[#0F766E] bg-[#E6F7F5] px-1.5 py-0.5 rounded flex items-center space-x-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#0F766E] animate-pulse"></span>
                       <span>Thinking & Recalling...</span>
                     </span>
                   </div>
                   {streamingContent ? (
                     <div className="prose-editorial">
                       <ReactMarkdown>{streamingContent}</ReactMarkdown>
-                      <span className="inline-block w-1.5 h-3 bg-[#285943] ml-1 animate-pulse align-middle" />
+                      <span className="inline-block w-1.5 h-3 bg-[#0F766E] ml-1 animate-pulse align-middle" />
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2 text-xs text-[#737B74] py-2">
-                      <span className="w-2 h-2 rounded-full bg-[#285943] animate-ping" />
+                      <span className="w-2 h-2 rounded-full bg-[#0F766E] animate-ping" />
                       <span className="animate-pulse">{statusText || 'Connecting to CoALA memory subsystems...'}</span>
                     </div>
                   )}
@@ -237,7 +237,7 @@ export default function ChatPage() {
         {/* Message Composer Area */}
         <div className="border-t border-[#DFE5DD] bg-[#FFFFFF] p-4 shrink-0">
           <div className="max-w-3xl mx-auto">
-            <form onSubmit={handleSubmit} className="relative flex items-center rounded-lg border border-[#DFE5DD] bg-[#F6F6F0] focus-within:border-[#285943] focus-within:ring-1 focus-within:ring-[#285943] transition-all">
+            <form onSubmit={handleSubmit} className="relative flex items-center rounded-lg border border-[#DFE5DD] bg-[#F6F6F0] focus-within:border-[#0F766E] focus-within:ring-1 focus-within:ring-[#0F766E] transition-all">
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -255,7 +255,7 @@ export default function ChatPage() {
               <button
                 type="submit"
                 disabled={isStreaming || !input.trim()}
-                className="mr-2 px-3.5 py-1.5 rounded-md bg-[#285943] hover:bg-[#1E4433] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-1.5"
+                className="mr-2 px-3.5 py-1.5 rounded-md bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center space-x-1.5"
               >
                 <span>Send</span>
                 <Send className="w-3.5 h-3.5" />

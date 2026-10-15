@@ -5,26 +5,26 @@
   --foreground: #242A25;
   --card: #FFFFFF;
   --card-foreground: #242A25;
-  --primary: #285943;
-  --primary-hover: #1e4433;
-  --secondary: #8DAA91;
-  --muted: #737B74;
-  --border: #DFE5DD;
-  --highlight: #E8F0E8;
+  --primary: #0F766E;
+  --primary-hover: #115E59;
+  --secondary: #14B8A6;
+  --muted: #64748B;
+  --border: #DDE5E5;
+  --highlight: #E6F7F5;
   --warning: #B7791F;
   --error: #B54747;
 }
 
 @theme {
-  --color-primary: #285943;
-  --color-primary-hover: #1e4433;
-  --color-secondary: #8DAA91;
+  --color-primary: #0F766E;
+  --color-primary-hover: #115E59;
+  --color-secondary: #14B8A6;
   --color-bg-main: #F6F6F0;
   --color-bg-card: #FFFFFF;
   --color-text-primary: #242A25;
-  --color-text-secondary: #737B74;
-  --color-border-subtle: #DFE5DD;
-  --color-highlight: #E8F0E8;
+  --color-text-secondary: #64748B;
+  --color-border-subtle: #DDE5E5;
+  --color-highlight: #E6F7F5;
   --color-warning: #B7791F;
   --color-error: #B54747;
 }
@@ -52,7 +52,7 @@ body {
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #8DAA91;
+  background: #14B8A6;
 }
 
 /* Markdown styling inside assistant messages */
@@ -98,11 +98,11 @@ body {
 .prose-editorial code {
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.8125rem;
-  background-color: #E8F0E8;
-  color: #285943;
+  background-color: #E6F7F5;
+  color: #0F766E;
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
-  border: 1px solid #DFE5DD;
+  border: 1px solid #DDE5E5;
 }
 .prose-editorial pre {
   background-color: #242A25;
@@ -121,9 +121,9 @@ body {
   border: none;
 }
 .prose-editorial blockquote {
-  border-left: 3px solid #8DAA91;
+  border-left: 3px solid #14B8A6;
   padding-left: 0.875rem;
-  color: #737B74;
+  color: #64748B;
   font-style: italic;
   margin: 0.75rem 0;
 }

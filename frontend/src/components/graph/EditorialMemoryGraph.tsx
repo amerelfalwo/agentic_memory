@@ -38,10 +38,10 @@ const EditorialNode = ({ data }: { data: any }) => {
     switch (type) {
       case 'agent':
         return {
-          badgeBg: '#E8F0E8',
-          badgeText: '#285943',
-          border: isSelected ? '#285943' : '#DFE5DD',
-          icon: <Brain className="w-4 h-4 text-[#285943]" />
+          badgeBg: '#E6F7F5',
+          badgeText: '#0F766E',
+          border: isSelected ? '#0F766E' : '#DFE5DD',
+          icon: <Brain className="w-4 h-4 text-[#0F766E]" />
         };
       case 'memory_working':
         return {
@@ -66,10 +66,10 @@ const EditorialNode = ({ data }: { data: any }) => {
         };
       case 'memory_procedural':
         return {
-          badgeBg: '#E8F0E8',
-          badgeText: '#285943',
-          border: isSelected ? '#285943' : '#DFE5DD',
-          icon: <ScrollText className="w-4 h-4 text-[#285943]" />
+          badgeBg: '#E6F7F5',
+          badgeText: '#0F766E',
+          border: isSelected ? '#0F766E' : '#DFE5DD',
+          icon: <ScrollText className="w-4 h-4 text-[#0F766E]" />
         };
       case 'guardrail':
         return {
@@ -95,13 +95,13 @@ const EditorialNode = ({ data }: { data: any }) => {
       style={{ borderColor: theme.border }}
       className={`
         relative px-4 py-3 rounded-lg bg-white border transition-all duration-150 min-w-[200px] shadow-xs cursor-pointer
-        ${isSelected ? 'ring-2 ring-[#285943]/20 shadow-md' : 'hover:border-[#8DAA91]'}
+        ${isSelected ? 'ring-2 ring-[#0F766E]/20 shadow-md' : 'hover:border-[#14B8A6]'}
       `}
     >
-      <Handle type="target" position={Position.Top} className="!bg-[#8DAA91] !w-2 !h-2 !border-white" />
-      <Handle type="source" position={Position.Bottom} className="!bg-[#8DAA91] !w-2 !h-2 !border-white" />
-      <Handle type="target" position={Position.Left} className="!bg-[#8DAA91] !w-2 !h-2 !border-white" />
-      <Handle type="source" position={Position.Right} className="!bg-[#8DAA91] !w-2 !h-2 !border-white" />
+      <Handle type="target" position={Position.Top} className="!bg-[#14B8A6] !w-2 !h-2 !border-white" />
+      <Handle type="source" position={Position.Bottom} className="!bg-[#14B8A6] !w-2 !h-2 !border-white" />
+      <Handle type="target" position={Position.Left} className="!bg-[#14B8A6] !w-2 !h-2 !border-white" />
+      <Handle type="source" position={Position.Right} className="!bg-[#14B8A6] !w-2 !h-2 !border-white" />
 
       <div className="flex items-center space-x-2.5">
         <div
@@ -115,7 +115,7 @@ const EditorialNode = ({ data }: { data: any }) => {
           <div className="text-[10px] text-[#737B74] flex items-center space-x-1 mt-0.5">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                status === 'active' ? 'bg-[#285943]' : 'bg-[#737B74]'
+                status === 'active' ? 'bg-[#0F766E]' : 'bg-[#737B74]'
               }`}
             />
             <span className="capitalize">{status}</span>
@@ -258,7 +258,7 @@ const GraphCanvasInner: React.FC = () => {
       label: edge.label,
       animated: edge.animated || edge.active || false,
       style: {
-        stroke: edge.active ? '#285943' : '#8DAA91',
+        stroke: edge.active ? '#0F766E' : '#14B8A6',
         strokeWidth: edge.active ? 2 : 1.5
       },
       labelStyle: {
@@ -276,7 +276,7 @@ const GraphCanvasInner: React.FC = () => {
       },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: edge.active ? '#285943' : '#8DAA91',
+        color: edge.active ? '#0F766E' : '#14B8A6',
         width: 12,
         height: 12
       }
@@ -319,7 +319,7 @@ const GraphCanvasInner: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={handleFitView}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-[#F6F6F0] hover:bg-[#E8F0E8] border border-[#DFE5DD] text-[#285943] text-xs font-medium transition-colors cursor-pointer"
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-[#F6F6F0] hover:bg-[#E6F7F5] border border-[#DFE5DD] text-[#0F766E] text-xs font-medium transition-colors cursor-pointer"
           >
             <Maximize2 className="w-3.5 h-3.5" />
             <span>Fit Graph</span>
@@ -346,12 +346,12 @@ const GraphCanvasInner: React.FC = () => {
         {/* Legend Overlay at Bottom-Left */}
         <div className="absolute bottom-5 left-5 z-10 bg-white/95 backdrop-blur-xs p-3 rounded-lg border border-[#DFE5DD] shadow-xs text-[11px] space-y-1.5 max-w-xs">
           <div className="font-semibold text-[#242A25] flex items-center space-x-1.5">
-            <HelpCircle className="w-3.5 h-3.5 text-[#285943]" />
+            <HelpCircle className="w-3.5 h-3.5 text-[#0F766E]" />
             <span>Memory Mesh Legend</span>
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[#737B74]">
             <span className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#285943]" />
+              <span className="w-2 h-2 rounded-full bg-[#0F766E]" />
               <span>Core Agent</span>
             </span>
             <span className="flex items-center space-x-1.5">
@@ -367,7 +367,7 @@ const GraphCanvasInner: React.FC = () => {
               <span>Semantic</span>
             </span>
             <span className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#8DAA91]" />
+              <span className="w-2 h-2 rounded-full bg-[#14B8A6]" />
               <span>Procedural</span>
             </span>
             <span className="flex items-center space-x-1.5">
@@ -382,7 +382,7 @@ const GraphCanvasInner: React.FC = () => {
           <div className="absolute top-4 right-4 z-20 w-88 max-h-[92%] rounded-xl bg-white border border-[#DFE5DD] shadow-lg p-5 overflow-y-auto animate-in fade-in duration-150">
             <div className="flex items-center justify-between border-b border-[#DFE5DD] pb-3 mb-3">
               <div className="flex items-center space-x-2">
-                <Info className="w-4 h-4 text-[#285943]" />
+                <Info className="w-4 h-4 text-[#0F766E]" />
                 <h4 className="text-sm font-semibold text-[#242A25]">{selectedNode.label}</h4>
               </div>
               <button
@@ -396,11 +396,11 @@ const GraphCanvasInner: React.FC = () => {
             <div className="space-y-3 text-xs">
               <div>
                 <span className="text-[#737B74] font-medium">Memory Classification:</span>
-                <span className="ml-2 font-mono text-[#285943] font-semibold">{selectedNode.type}</span>
+                <span className="ml-2 font-mono text-[#0F766E] font-semibold">{selectedNode.type}</span>
               </div>
               <div>
                 <span className="text-[#737B74] font-medium">Operational State:</span>
-                <span className="ml-2 inline-flex items-center text-[#285943] font-medium capitalize">
+                <span className="ml-2 inline-flex items-center text-[#0F766E] font-medium capitalize">
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                   {selectedNode.status}
                 </span>

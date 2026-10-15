@@ -31,7 +31,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpenMobile, onCloseM
         <button
           onClick={handleCreateNewSession}
           disabled={isStreaming}
-          className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-md bg-[#285943] hover:bg-[#1E4433] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+          className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-md bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>New Conversation</span>
@@ -57,13 +57,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpenMobile, onCloseM
                 group flex items-center justify-between px-3 py-2 rounded-md text-xs cursor-pointer transition-colors
                 ${
                   isActive
-                    ? 'bg-[#E8F0E8] text-[#285943] font-medium border border-[#DFE5DD]'
+                    ? 'bg-[#E6F7F5] text-[#0F766E] font-medium border border-[#DFE5DD]'
                     : 'text-[#242A25] hover:bg-[#F6F6F0]'
                 }
               `}
             >
               <div className="flex items-center space-x-2 min-w-0">
-                <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#285943]' : 'text-[#737B74]'}`} />
+                <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#0F766E]' : 'text-[#737B74]'}`} />
                 <span className="truncate">{session.title}</span>
               </div>
 
