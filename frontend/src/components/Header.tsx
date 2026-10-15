@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div>
             <div className="flex items-center space-x-2">
               <h1 className="text-lg font-bold text-slate-100 tracking-tight">
-                Agentic Memory AI Engine
+                Mnemos — Cognitive Memory AI Engine
               </h1>
               <span className="text-[10px] font-semibold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
                 CoALA Framework

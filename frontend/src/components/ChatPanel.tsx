@@ -47,7 +47,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         <div className="flex items-center space-x-2">
           <Bot className="w-4 h-4 text-indigo-400" />
           <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-            Agentic Cognitive Chat
+            Mnemos Cognitive Chat
           </h3>
         </div>
         <span className="text-[11px] text-slate-400 flex items-center space-x-1.5">
