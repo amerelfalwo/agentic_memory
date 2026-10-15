@@ -1,2 +1,11 @@
-.env 
+.env
+.env*.local
 .venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.next/
+out/
+node_modules/
+.DS_Store

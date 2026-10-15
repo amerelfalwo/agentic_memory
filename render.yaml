@@ -22,6 +22,10 @@ services:
         value: localhost
       - key: WEAVIATE_PORT
         value: "8085"
+      - key: WEAVIATE_URL
+        sync: false
+      - key: WEAVIATE_API_KEY
+        sync: false
       - key: CORS_ORIGINS
         value: '["*"]'
 

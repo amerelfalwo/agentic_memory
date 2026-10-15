@@ -14,6 +14,8 @@ class Settings(BaseModel):
     MODEL_NAME: str = Field(default_factory=lambda: os.getenv("model", "groq:qwen/qwen3.8-27b").replace("groq:", ""))
     WEAVIATE_HOST: str = Field(default_factory=lambda: os.getenv("WEAVIATE_HOST", "localhost"))
     WEAVIATE_PORT: int = Field(default_factory=lambda: int(os.getenv("WEAVIATE_PORT", "8085")))
+    WEAVIATE_URL: str = Field(default_factory=lambda: os.getenv("WEAVIATE_URL", ""))
+    WEAVIATE_API_KEY: str = Field(default_factory=lambda: os.getenv("WEAVIATE_API_KEY", ""))
     PROCEDURAL_FILE_PATH: Path = Field(
         default_factory=lambda: ROOT_DIR / "langgraph" / "procedural_memory_lg.txt"
     )

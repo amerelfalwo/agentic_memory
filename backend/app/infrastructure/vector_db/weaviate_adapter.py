@@ -1,5 +1,7 @@
 from typing import List, Optional
 import weaviate
+from weaviate.auth import AuthApiKey
+from weaviate.classes.config import Property, DataType
 from backend.app.domain.models.memory import EpisodicRecord, SemanticChunk
 from backend.app.domain.ports.vector_db_port import IVectorDBPort
 from backend.app.infrastructure.vector_db.memory_fallback_adapter import InMemoryVectorAdapter
@@ -17,16 +19,67 @@ class WeaviateVectorAdapter(IVectorDBPort):
 
     def _connect(self):
         try:
-            self._client = weaviate.connect_to_local(port=settings.WEAVIATE_PORT)
-            self._is_connected = self._client.is_ready()
-            if self._is_connected:
-                logger.info(f"Connected successfully to local Weaviate on port {settings.WEAVIATE_PORT}")
+            url = settings.WEAVIATE_URL or (settings.WEAVIATE_HOST if ("weaviate.cloud" in settings.WEAVIATE_HOST or "weaviate.network" in settings.WEAVIATE_HOST) else "")
+            api_key = settings.WEAVIATE_API_KEY
+            if url and api_key:
+                cluster_url = url if url.startswith("http") else f"https://{url}"
+                self._client = weaviate.connect_to_weaviate_cloud(
+                    cluster_url=cluster_url,
+                    auth_credentials=AuthApiKey(api_key)
+                )
+                self._is_connected = self._client.is_ready()
+                if self._is_connected:
+                    logger.info(f"Connected successfully to Weaviate Cloud at {cluster_url}")
+                    self._ensure_collections()
+                else:
+                    logger.warning("Weaviate Cloud connected but not ready.")
             else:
-                logger.warning("Weaviate is reachable but not ready, using fallback.")
+                self._client = weaviate.connect_to_local(port=settings.WEAVIATE_PORT)
+                self._is_connected = self._client.is_ready()
+                if self._is_connected:
+                    logger.info(f"Connected successfully to local Weaviate on port {settings.WEAVIATE_PORT}")
+                    self._ensure_collections()
+                else:
+                    logger.warning("Weaviate is reachable but not ready, using fallback.")
         except Exception as e:
             logger.warning(f"Could not connect to Weaviate: {e}. Active mode: InMemoryFallback.")
             self._client = None
             self._is_connected = False
+
+    def _ensure_collections(self):
+        if not self._client or not self._is_connected:
+            return
+        try:
+            if not self._client.collections.exists("episodic_memory"):
+                self._client.collections.create(
+                    name="episodic_memory",
+                    properties=[
+                        Property(name="conversation", data_type=DataType.TEXT),
+                        Property(name="context_tags", data_type=DataType.TEXT_ARRAY),
+                        Property(name="conversation_summary", data_type=DataType.TEXT),
+                        Property(name="what_worked", data_type=DataType.TEXT),
+                        Property(name="what_to_avoid", data_type=DataType.TEXT),
+                    ]
+                )
+                logger.info("Initialized episodic_memory collection in Weaviate.")
+
+            if not self._client.collections.exists("CoALA_Paper"):
+                self._client.collections.create(
+                    name="CoALA_Paper",
+                    properties=[
+                        Property(name="chunk", data_type=DataType.TEXT),
+                        Property(name="page", data_type=DataType.INT),
+                    ]
+                )
+                logger.info("Initialized CoALA_Paper collection in Weaviate.")
+                if self._fallback and self._fallback.semantic_chunks:
+                    col = self._client.collections.get("CoALA_Paper")
+                    with col.batch.dynamic() as batch:
+                        for chunk in self._fallback.semantic_chunks:
+                            batch.add_object({"chunk": chunk.text, "page": chunk.chunk_index})
+                    logger.info(f"Populated {len(self._fallback.semantic_chunks)} chunks into Weaviate CoALA_Paper collection.")
+        except Exception as e:
+            logger.warning(f"Failed to ensure Weaviate collections: {e}")
 
     def is_connected(self) -> bool:
         return self._is_connected
