@@ -1,3 +1,4 @@
+import time
 from typing import Any, Dict, List
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.tools import tool
@@ -45,8 +46,15 @@ class NodeFactory:
         if not messages:
             return {"end": False, "security_blocked": False}
 
+        timing = state.get("timing_data")
         last_msg = messages[-1].content if hasattr(messages[-1], "content") else str(messages[-1])
+
+        t0 = time.perf_counter()
         is_safe, pattern = check_prompt_security(last_msg)
+        dur = (time.perf_counter() - t0) * 1000
+        if timing and "stages" in timing:
+            timing["stages"]["guard"] = timing["stages"].get("guard", 0.0) + dur
+
         if not is_safe:
             logger.warning(f"Security Alert: Blocked pattern '{pattern}'")
             warning = SystemMessage(content="Security Alert: Potentially unsafe query or prompt override detected.")
@@ -54,49 +62,74 @@ class NodeFactory:
                 "messages": messages + [warning],
                 "end": True,
                 "security_blocked": True,
-                "blocked_reason": f"Disallowed pattern: {pattern}"
+                "blocked_reason": f"Disallowed pattern: {pattern}",
+                "timing_data": timing
             }
-        return {"end": False, "security_blocked": False}
+        return {"end": False, "security_blocked": False, "timing_data": timing}
 
     def summarize_history(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
+        timing = state.get("timing_data")
         if len(messages) <= 4:
-            return {}
+            return {"timing_data": timing}
         
         to_summarize = messages[1:-2]
         formatted = format_conversation_for_summary(to_summarize)
         summary_prompt = f"Summarize the following conversation concisely while preserving key details and agent context:\n\n{formatted}"
+        
+        t0 = time.perf_counter()
         summary_res = self.llm_service.invoke([HumanMessage(content=summary_prompt)])
+        dur = (time.perf_counter() - t0) * 1000
+        if timing:
+            timing["stages"]["llm_summarize"] = timing["stages"].get("llm_summarize", 0.0) + dur
+            timing["llm_calls"]["summarize"] = timing["llm_calls"].get("summarize", 0) + 1
+
         summary_text = summary_res.content if hasattr(summary_res, "content") else str(summary_res)
         summary_msg = SystemMessage(content=f"Summary of prior conversation: {summary_text}")
         
         logger.info("Summarization triggered: condensed conversation history.")
-        return {"messages": [summary_msg]}
+        return {"messages": [summary_msg], "timing_data": timing}
 
     def memory_agent(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
+        timing = state.get("timing_data")
         underlying = getattr(self.llm_service, "_llm", None)
+        
+        t0 = time.perf_counter()
         if underlying:
             try:
                 llm_with_tools = underlying.bind_tools(self.tools)
                 response = llm_with_tools.invoke(messages)
-                return {"messages": [response]}
+                dur = (time.perf_counter() - t0) * 1000
+                if timing:
+                    timing["stages"]["llm_agent"] = timing["stages"].get("llm_agent", 0.0) + dur
+                    timing["llm_calls"]["agent"] = timing["llm_calls"].get("agent", 0) + 1
+                return {"messages": [response], "timing_data": timing}
             except Exception as e:
                 logger.warning(f"Tool-bind invoke issue ({e}), falling back to direct LLM invoke.")
                 try:
                     direct_res = underlying.invoke(messages)
-                    return {"messages": [direct_res]}
+                    dur = (time.perf_counter() - t0) * 1000
+                    if timing:
+                        timing["stages"]["llm_agent"] = timing["stages"].get("llm_agent", 0.0) + dur
+                        timing["llm_calls"]["agent"] = timing["llm_calls"].get("agent", 0) + 1
+                    return {"messages": [direct_res], "timing_data": timing}
                 except Exception as inner_e:
                     logger.error(f"Direct invoke failed: {inner_e}")
         
         # Fallback invocation
         response = self.llm_service.invoke(messages)
-        return {"messages": [response]}
+        dur = (time.perf_counter() - t0) * 1000
+        if timing:
+            timing["stages"]["llm_agent"] = timing["stages"].get("llm_agent", 0.0) + dur
+            timing["llm_calls"]["agent"] = timing["llm_calls"].get("agent", 0) + 1
+        return {"messages": [response], "timing_data": timing}
 
     def update_memory(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
+        timing = state.get("timing_data")
         if len(messages) < 2:
-            return {}
+            return {"timing_data": timing}
 
         try:
             # Format conversation without initial system/semantic prompts
@@ -104,7 +137,13 @@ class NodeFactory:
             conv_text = format_conversation_for_summary(filtered_msgs)
 
             # 1. Reflect episodic memory
+            t0 = time.perf_counter()
             reflection = self.llm_service.reflect_conversation(conv_text)
+            dur_reflect = (time.perf_counter() - t0) * 1000
+            if timing:
+                timing["stages"]["llm_reflect"] = timing["stages"].get("llm_reflect", 0.0) + dur_reflect
+                timing["llm_calls"]["reflect"] = timing["llm_calls"].get("reflect", 0) + 1
+
             episodic_record = EpisodicRecord(
                 conversation=conv_text,
                 context_tags=reflection.get("context_tags", ["general"]),
@@ -116,20 +155,27 @@ class NodeFactory:
 
             # 2. Refine procedural guidelines
             current_proc = self.procedural_repo.get_snapshot().raw_text
+            t0 = time.perf_counter()
             updated_rules = self.llm_service.synthesize_procedural_rules(
                 current_rules=current_proc,
                 what_worked=episodic_record.what_worked,
                 what_to_avoid=episodic_record.what_to_avoid
             )
+            dur_proc = (time.perf_counter() - t0) * 1000
+            if timing:
+                timing["stages"]["llm_procedural"] = timing["stages"].get("llm_procedural", 0.0) + dur_proc
+                timing["llm_calls"]["procedural"] = timing["llm_calls"].get("procedural", 0) + 1
+
             if updated_rules != current_proc:
                 self.procedural_repo.save_rules(updated_rules)
                 logger.info("Updated procedural memory guidelines following reflection.")
 
             return {
                 "what_worked": state.get("what_worked", []) + [episodic_record.what_worked],
-                "what_to_avoid": state.get("what_to_avoid", []) + [episodic_record.what_to_avoid]
+                "what_to_avoid": state.get("what_to_avoid", []) + [episodic_record.what_to_avoid],
+                "timing_data": timing
             }
         except Exception as e:
             logger.warning(f"update_memory reflection encountered an error: {e}")
-            return {}
+            return {"timing_data": timing}
 

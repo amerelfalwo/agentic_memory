@@ -1,3 +1,5 @@
+import time
+import json
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import uuid
@@ -105,18 +107,57 @@ class SnapshotCoordinatorService:
         )
         return snapshot
 
+    @staticmethod
+    def format_server_timing(timing_data: Dict[str, Any]) -> str:
+        if not timing_data:
+            return ""
+        parts = []
+        for stage, dur in timing_data.get("stages", {}).items():
+            parts.append(f"{stage};dur={dur:.1f}")
+        if "total_ms" in timing_data:
+            parts.append(f"total;dur={timing_data['total_ms']:.1f}")
+        return ", ".join(parts)
+
     def execute_turn(self, session_id: str, user_input: str) -> Dict[str, Any]:
+        turn_start_time = time.perf_counter()
+        timing_data: Dict[str, Any] = {
+            "stages": {
+                "guard": 0.0,
+                "episodic_search": 0.0,
+                "semantic_search": 0.0,
+                "llm_summarize": 0.0,
+                "llm_agent": 0.0,
+                "llm_reflect": 0.0,
+                "llm_procedural": 0.0,
+                "snapshot_capture": 0.0,
+                "diff": 0.0,
+                "audit_save": 0.0,
+            },
+            "llm_calls": {
+                "summarize": 0,
+                "agent": 0,
+                "reflect": 0,
+                "procedural": 0,
+            }
+        }
         turn_id = self._session_turns.get(session_id, 0) + 1
         self._session_turns[session_id] = turn_id
 
         # 1. Capture BEFORE snapshot
+        t0 = time.perf_counter()
         before_snap = self.capture_snapshot(session_id, turn_id)
+        timing_data["stages"]["snapshot_capture"] += (time.perf_counter() - t0) * 1000
 
         # 2. Memory Recall Phase
         # Recall Episodic
+        t0 = time.perf_counter()
         matched_episodic = self.vector_db.search_episodic(user_input, limit=1)
+        timing_data["stages"]["episodic_search"] += (time.perf_counter() - t0) * 1000
+
         # Recall Semantic
+        t0 = time.perf_counter()
         semantic_chunks = self.vector_db.search_semantic(user_input, limit=4)
+        timing_data["stages"]["semantic_search"] += (time.perf_counter() - t0) * 1000
 
         # 3. Procedural Guidelines
         current_procedural = self.procedural_repo.get_snapshot().raw_text
@@ -169,11 +210,19 @@ class SnapshotCoordinatorService:
             "retrieved_chunks": [
                 c.model_dump() if hasattr(c, "model_dump") else (c.dict() if hasattr(c, "dict") else {"text": getattr(c, "text", str(c))})
                 for c in semantic_chunks
-            ] if semantic_chunks else []
+            ] if semantic_chunks else [],
+            "timing_data": timing_data
         }
 
         # Run through LangGraph
         graph_output = self.graph.invoke(state)
+        if "timing_data" in graph_output and graph_output["timing_data"]:
+            gt = graph_output["timing_data"]
+            for k, v in gt.get("stages", {}).items():
+                timing_data["stages"][k] = v
+            for k, v in gt.get("llm_calls", {}).items():
+                timing_data["llm_calls"][k] = v
+
         final_messages = graph_output["messages"]
         last_response = final_messages[-1]
         response_text = last_response.content if hasattr(last_response, "content") else str(last_response)
@@ -199,9 +248,13 @@ class SnapshotCoordinatorService:
         new_reflection = None
         if len(self._session_messages[session_id]) % 2 == 0 and len(self._session_messages[session_id]) >= 2:
             try:
+                t0 = time.perf_counter()
                 reflection_dict = self.llm_service.reflect_conversation(
                     format_conversation_for_summary(self._session_messages[session_id])
                 )
+                timing_data["stages"]["llm_reflect"] += (time.perf_counter() - t0) * 1000
+                timing_data["llm_calls"]["reflect"] += 1
+
                 new_reflection = EpisodicRecord(
                     conversation=f"Turn {turn_id}: {user_input} -> {response_text[:100]}",
                     context_tags=reflection_dict.get("context_tags", ["auto_reflection"]),
@@ -212,25 +265,32 @@ class SnapshotCoordinatorService:
                 self.vector_db.insert_episodic(new_reflection)
                 
                 # Check procedural evolution
+                t0 = time.perf_counter()
                 updated_rules = self.llm_service.synthesize_procedural_rules(
                     current_rules=current_procedural,
                     what_worked=new_reflection.what_worked,
                     what_to_avoid=new_reflection.what_to_avoid
                 )
+                timing_data["stages"]["llm_procedural"] += (time.perf_counter() - t0) * 1000
+                timing_data["llm_calls"]["procedural"] += 1
+
                 if updated_rules != current_procedural:
                     self.procedural_repo.save_rules(updated_rules)
             except Exception as e:
                 logger.warning(f"Turn reflection error: {e}")
 
         # 7. Capture AFTER snapshot
+        t0 = time.perf_counter()
         after_snap = self.capture_snapshot(
             session_id,
             turn_id,
             active_chunks=semantic_chunks,
             matched_episodic=matched_episodic
         )
+        timing_data["stages"]["snapshot_capture"] += (time.perf_counter() - t0) * 1000
 
         # 8. Compute Granular Turn Diff
+        t0 = time.perf_counter()
         added_msgs = [
             {"role": "user", "content": user_input},
             {"role": "assistant", "content": response_text}
@@ -246,10 +306,29 @@ class SnapshotCoordinatorService:
             new_reflection=new_reflection,
             added_messages=added_msgs
         )
+        timing_data["stages"]["diff"] += (time.perf_counter() - t0) * 1000
 
         # Save to Audit Repository
+        t0 = time.perf_counter()
         self.audit_repo.save_snapshot(after_snap)
         self.audit_repo.save_diff(turn_diff)
+        timing_data["stages"]["audit_save"] += (time.perf_counter() - t0) * 1000
+
+        total_turn_ms = (time.perf_counter() - turn_start_time) * 1000
+        timing_data["total_ms"] = total_turn_ms
+        timing_data["llm_calls"]["total"] = sum(timing_data["llm_calls"].values())
+
+        # One structured log line per turn
+        logger.info(
+            json.dumps({
+                "event": "turn_timing",
+                "session_id": session_id,
+                "turn_id": turn_id,
+                "total_ms": round(total_turn_ms, 2),
+                "stages_ms": {k: round(v, 2) for k, v in timing_data["stages"].items()},
+                "llm_calls": timing_data["llm_calls"]
+            })
+        )
 
         is_blocked = graph_output.get("security_blocked", False)
 
@@ -260,7 +339,8 @@ class SnapshotCoordinatorService:
             "security_blocked": is_blocked,
             "blocked_reason": graph_output.get("blocked_reason"),
             "snapshot": after_snap,
-            "diff": turn_diff
+            "diff": turn_diff,
+            "timing": timing_data
         }
 
     def get_memory_context(self, session_id: str, query: Optional[str] = None) -> MemoryContext:

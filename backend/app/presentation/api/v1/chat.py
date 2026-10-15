@@ -1,6 +1,6 @@
 import json
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sse_starlette.sse import EventSourceResponse
 from backend.app.application.dtos.chat_dtos import (
     ChatRequest,
@@ -18,10 +18,14 @@ router = APIRouter()
 @router.post("/chat", response_model=ChatResponse, summary="Execute a multi-turn chat cycle with memory state capture")
 def execute_chat(
     req: ChatRequest,
+    response: Response,
     coordinator: SnapshotCoordinatorService = Depends(get_coordinator_service)
 ):
     try:
         result = coordinator.execute_turn(session_id=req.session_id, user_input=req.message)
+        if "timing" in result:
+            server_timing = coordinator.format_server_timing(result["timing"])
+            response.headers["Server-Timing"] = server_timing
         return ChatResponse(
             session_id=result["session_id"],
             turn_id=result["turn_id"],
@@ -83,6 +87,7 @@ async def execute_chat_stream(
             "data": json.dumps(turn_result["diff"].model_dump(), default=str)
         }
 
+        server_timing_val = coordinator.format_server_timing(turn_result.get("timing", {}))
         yield {
             "event": "done",
             "data": json.dumps({
@@ -90,7 +95,9 @@ async def execute_chat_stream(
                 "turn_id": turn_result["turn_id"],
                 "security_blocked": turn_result["security_blocked"],
                 "blocked_reason": turn_result["blocked_reason"],
-                "full_response": turn_result["response"]
+                "full_response": turn_result["response"],
+                "timing": turn_result.get("timing"),
+                "server_timing": server_timing_val
             })
         }
 
