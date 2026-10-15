@@ -7,13 +7,10 @@ import {
   Sparkles,
   ShieldAlert,
   PanelLeft,
-  X,
-  RotateCcw,
   Check,
   Copy
 } from 'lucide-react';
 import { useMemory } from '../../context/MemoryContext';
-import { ChatSidebar } from '../../components/chat/ChatSidebar';
 import { MemoryActivityAccordion } from '../../components/chat/MemoryActivityAccordion';
 
 export default function ChatPage() {
@@ -24,11 +21,12 @@ export default function ChatPage() {
     streamingContent,
     statusText,
     sessionId,
-    sessions
+    sessions,
+    toggleSidebar,
+    setMobileSidebarOpen
   } = useMemory();
 
   const [input, setInput] = useState('');
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -69,37 +67,40 @@ export default function ChatPage() {
   ];
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-[#F6F6F0]">
-      {/* Left Sidebar */}
-      <ChatSidebar
-        isOpenMobile={mobileSidebarOpen}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
-      />
-
-      {/* Main Chat Column */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#F6F6F0] relative">
-        {/* Chat Sub-Header */}
-        <div className="h-11 border-b border-[#DFE5DD] bg-[#FFFFFF] px-4 flex items-center justify-between text-xs text-[#737B74]">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-              className="md:hidden p-1 rounded hover:bg-[#F6F6F0] text-[#242A25]"
-              title="Toggle sidebar"
-            >
-              <PanelLeft className="w-4 h-4" />
-            </button>
-            <span className="font-semibold text-[#242A25] truncate">
-              {currentSession?.title || 'Cognitive Chat Session'}
+    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-[#F6F6F0] relative">
+      {/* Chat Sub-Header */}
+      <div className="h-12 border-b border-[#DFE5DD] bg-[#FFFFFF] px-4 flex items-center justify-between text-xs text-[#737B74] shrink-0">
+        <div className="flex items-center space-x-2.5 min-w-0">
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                setMobileSidebarOpen((prev) => !prev);
+              } else {
+                toggleSidebar();
+              }
+            }}
+            className="p-1.5 rounded-md hover:bg-[#F6F6F0] text-[#737B74] hover:text-[#0F766E] transition-colors cursor-pointer"
+            title="Toggle sidebar (Open/Close)"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+          <span className="font-semibold text-[#242A25] truncate">
+            {currentSession?.title || 'Cognitive Chat Session'}
+          </span>
+          {currentSession?.turnCount && currentSession.turnCount > 0 ? (
+            <span className="text-[10px] font-mono text-[#0F766E] bg-[#E6F7F5] px-1.5 py-0.5 rounded border border-[#DFE5DD] shrink-0">
+              Turn #{currentSession.turnCount}
             </span>
-          </div>
-
-          {statusText && (
-            <div className="flex items-center space-x-1.5 text-[11px] text-[#0F766E] bg-[#E6F7F5] px-2.5 py-0.5 rounded border border-[#DFE5DD]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#0F766E] animate-pulse"></span>
-              <span>{statusText}</span>
-            </div>
-          )}
+          ) : null}
         </div>
+
+        {statusText && (
+          <div className="flex items-center space-x-1.5 text-[11px] text-[#0F766E] bg-[#E6F7F5] px-2.5 py-0.5 rounded border border-[#DFE5DD]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0F766E] animate-pulse"></span>
+            <span>{statusText}</span>
+          </div>
+        )}
+      </div>
 
         {/* Message Stream Area */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
@@ -268,6 +269,5 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

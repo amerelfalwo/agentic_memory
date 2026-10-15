@@ -25,7 +25,8 @@ import {
   Info,
   X,
   Maximize2,
-  HelpCircle
+  HelpCircle,
+  PanelLeft
 } from 'lucide-react';
 import { TopologyNode } from '../../types';
 import { useMemory } from '../../context/MemoryContext';
@@ -229,7 +230,7 @@ const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
 };
 
 const GraphCanvasInner: React.FC = () => {
-  const { topology } = useMemory();
+  const { topology, toggleSidebar, setMobileSidebarOpen } = useMemory();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
   const reactFlowInstance = useReactFlow();
 
@@ -309,11 +310,24 @@ const GraphCanvasInner: React.FC = () => {
   return (
     <div className="w-full h-full min-h-[600px] flex flex-col bg-[#F6F6F0] relative">
       {/* Canvas Header / Controls Bar */}
-      <div className="h-12 px-6 border-b border-[#DFE5DD] bg-[#FFFFFF] flex items-center justify-between text-xs text-[#737B74] shrink-0">
-        <div className="flex items-center space-x-2">
+      <div className="h-12 px-4 sm:px-6 border-b border-[#DFE5DD] bg-[#FFFFFF] flex items-center justify-between text-xs text-[#737B74] shrink-0">
+        <div className="flex items-center space-x-2.5">
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                setMobileSidebarOpen((prev) => !prev);
+              } else {
+                toggleSidebar();
+              }
+            }}
+            className="p-1.5 rounded-md hover:bg-[#F6F6F0] text-[#737B74] hover:text-[#0F766E] transition-colors cursor-pointer"
+            title="Toggle sidebar (Open/Close)"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
           <span className="font-semibold text-[#242A25]">Agent-Memory Mesh Topology</span>
           <span className="text-[#DFE5DD]">|</span>
-          <span>CoALA Multi-Tier Memory Routing</span>
+          <span className="hidden sm:inline">CoALA Multi-Tier Memory Routing</span>
         </div>
 
         <div className="flex items-center space-x-2">

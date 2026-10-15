@@ -11,12 +11,15 @@ import {
   ListFilter,
   CheckCircle2,
   FileCode,
-  RotateCcw
+  RotateCcw,
+  PanelLeft
 } from 'lucide-react';
 import { fetchProceduralRules, updateProceduralRules } from '../../lib/api';
 import { ProceduralRule } from '../../types';
+import { useMemory } from '../../context/MemoryContext';
 
 export default function GuidelinesPage() {
+  const { toggleSidebar, setMobileSidebarOpen } = useMemory();
   const [rules, setRules] = useState<ProceduralRule[]>([]);
   const [rawText, setRawText] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -85,12 +88,25 @@ export default function GuidelinesPage() {
   });
 
   return (
-    <div className="flex-1 bg-[#F6F6F0] py-8 px-4 sm:px-6">
+    <div className="flex-1 h-full overflow-y-auto bg-[#F6F6F0] py-8 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Page Header */}
         <div className="bg-[#FFFFFF] p-6 rounded-xl border border-[#DFE5DD] shadow-xs flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    setMobileSidebarOpen((prev) => !prev);
+                  } else {
+                    toggleSidebar();
+                  }
+                }}
+                className="p-1.5 rounded-md hover:bg-[#F6F6F0] text-[#737B74] hover:text-[#0F766E] transition-colors cursor-pointer mr-1"
+                title="Toggle sidebar (Open/Close)"
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
               <ScrollText className="w-5 h-5 text-[#0F766E]" />
               <h1 className="text-lg font-bold text-[#242A25] tracking-tight">
                 Procedural Guidelines Manager

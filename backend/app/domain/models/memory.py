@@ -51,3 +51,47 @@ class FullMemorySnapshot(BaseModel):
     episodic: Optional[EpisodicRecord] = None
     semantic: List[SemanticChunk] = Field(default_factory=list)
     procedural: ProceduralMemorySnapshot
+
+class WorkingMemoryContext(BaseModel):
+    message_count: int
+    is_summarized: bool = False
+    active_summary: Optional[str] = None
+    estimated_tokens: int = 0
+    recent_messages: List[Dict[str, Any]] = Field(default_factory=list)
+
+class EpisodicMemoryContext(BaseModel):
+    storage: str = "Weaviate Vector DB"
+    matched_prior_episode: Optional[EpisodicRecord] = None
+    recent_reflections: List[EpisodicRecord] = Field(default_factory=list)
+    what_worked: List[str] = Field(default_factory=list)
+    what_to_avoid: List[str] = Field(default_factory=list)
+
+class SemanticMemoryContext(BaseModel):
+    source: str = "CoALA_Paper.pdf"
+    retrieved_chunks: List[SemanticChunk] = Field(default_factory=list)
+    total_chunks_available: int = 20
+
+class ProceduralMemoryContext(BaseModel):
+    total_rules: int
+    rules: List[ProceduralRule] = Field(default_factory=list)
+    raw_text: str = ""
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SystemStatusContext(BaseModel):
+    vector_db_connected: bool
+    model_name: str
+    guardrail_armed: bool = True
+    session_id: str
+    turn_id: int
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class MemoryContext(BaseModel):
+    session_id: str
+    turn_id: int
+    system_status: SystemStatusContext
+    working: WorkingMemoryContext
+    episodic: EpisodicMemoryContext
+    semantic: SemanticMemoryContext
+    procedural: ProceduralMemoryContext
+    formatted_prompt_context: Optional[str] = None
+

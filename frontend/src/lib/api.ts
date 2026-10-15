@@ -2,7 +2,8 @@ import {
   MemoryTopologyResponse,
   TurnMemoryDiff,
   ProceduralRule,
-  FullMemorySnapshot
+  FullMemorySnapshot,
+  BackendMemoryContext
 } from '../types';
 
 export function getApiBase(): string {
@@ -202,3 +203,30 @@ export async function sendChatMessage(
     };
   }
 }
+
+export async function fetchMemoryContext(
+  sessionId: string = 'default-session',
+  query?: string
+): Promise<BackendMemoryContext> {
+  const url = new URL(`${API_BASE}/memories/context/${encodeURIComponent(sessionId)}`);
+  if (query) {
+    url.searchParams.append('query', query);
+  }
+  const res = await fetch(url.toString(), { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to fetch backend memory context');
+  return res.json();
+}
+
+export async function syncSessionContext(
+  sessionId: string,
+  messages: Array<{ role: string; content: string }>
+): Promise<{ status: string; synced_messages_count: number }> {
+  const res = await fetch(`${API_BASE}/memories/context/${encodeURIComponent(sessionId)}/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, messages })
+  });
+  if (!res.ok) throw new Error('Failed to sync session context to backend');
+  return res.json();
+}
+

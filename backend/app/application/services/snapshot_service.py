@@ -8,7 +8,13 @@ from backend.app.domain.models.memory import (
     WorkingMemorySnapshot,
     EpisodicRecord,
     SemanticChunk,
-    ProceduralMemorySnapshot
+    ProceduralMemorySnapshot,
+    MemoryContext,
+    WorkingMemoryContext,
+    EpisodicMemoryContext,
+    SemanticMemoryContext,
+    ProceduralMemoryContext,
+    SystemStatusContext
 )
 from backend.app.domain.models.diff import TurnMemoryDiff
 from backend.app.domain.ports.vector_db_port import IVectorDBPort
@@ -233,3 +239,139 @@ Procedural Guidelines:
             "snapshot": after_snap,
             "diff": turn_diff
         }
+
+    def get_memory_context(self, session_id: str, query: Optional[str] = None) -> MemoryContext:
+        turn_id = self._session_turns.get(session_id, 0)
+        messages = self.get_messages(session_id)
+        vdb_connected = self.vector_db.is_connected()
+        model_name = getattr(self.llm_service, "_model_name", "ChatGroq (Qwen)")
+
+        # 1. Working Memory Context
+        has_summary = any("Summary of prior conversation:" in getattr(m, "content", "") for m in messages)
+        active_summary = None
+        for m in messages:
+            content = getattr(m, "content", "")
+            if "Summary of prior conversation:" in content:
+                active_summary = content
+                break
+
+        recent_msgs = []
+        for m in messages:
+            role = "user" if isinstance(m, HumanMessage) else ("assistant" if isinstance(m, AIMessage) else "system")
+            content = getattr(m, "content", str(m))
+            recent_msgs.append({"role": role, "content": content})
+
+        est_tokens = sum(len(getattr(m, "content", "")) for m in messages) // 4
+        working_ctx = WorkingMemoryContext(
+            message_count=len(messages),
+            is_summarized=has_summary,
+            active_summary=active_summary,
+            estimated_tokens=est_tokens,
+            recent_messages=recent_msgs[-10:]
+        )
+
+        # 2. Episodic Memory Context
+        search_query = query
+        if not search_query and recent_msgs:
+            for m in reversed(recent_msgs):
+                if m["role"] == "user":
+                    search_query = m["content"]
+                    break
+
+        matched_episode = None
+        if search_query:
+            matched_episode = self.vector_db.search_episodic(search_query)
+
+        session_diffs = self.audit_repo.get_diffs(session_id)
+        what_worked_list = []
+        what_to_avoid_list = []
+        recent_reflections = []
+
+        if matched_episode:
+            recent_reflections.append(matched_episode)
+            what_worked_list.append(matched_episode.what_worked)
+            what_to_avoid_list.append(matched_episode.what_to_avoid)
+
+        for d in session_diffs:
+            if d.episodic_diff and d.episodic_diff.new_reflection:
+                nr = d.episodic_diff.new_reflection
+                if nr not in recent_reflections:
+                    recent_reflections.append(nr)
+                if nr.what_worked and nr.what_worked not in what_worked_list:
+                    what_worked_list.append(nr.what_worked)
+                if nr.what_to_avoid and nr.what_to_avoid not in what_to_avoid_list:
+                    what_to_avoid_list.append(nr.what_to_avoid)
+
+        episodic_ctx = EpisodicMemoryContext(
+            storage="Weaviate Vector DB" if vdb_connected else "In-Memory Vector Store",
+            matched_prior_episode=matched_episode,
+            recent_reflections=recent_reflections[:5],
+            what_worked=what_worked_list[:5],
+            what_to_avoid=what_to_avoid_list[:5]
+        )
+
+        # 3. Semantic Memory Context
+        semantic_chunks = []
+        if search_query:
+            semantic_chunks = self.vector_db.search_semantic(search_query, limit=4)
+
+        semantic_ctx = SemanticMemoryContext(
+            source="CoALA_Paper.pdf",
+            retrieved_chunks=semantic_chunks,
+            total_chunks_available=20
+        )
+
+        # 4. Procedural Memory Context
+        proc_snap = self.procedural_repo.get_snapshot()
+        procedural_ctx = ProceduralMemoryContext(
+            total_rules=len(proc_snap.rules),
+            rules=proc_snap.rules,
+            raw_text=proc_snap.raw_text,
+            last_updated=proc_snap.last_updated
+        )
+
+        # 5. System Status Context
+        status_ctx = SystemStatusContext(
+            vector_db_connected=vdb_connected,
+            model_name=model_name,
+            guardrail_armed=True,
+            session_id=session_id,
+            turn_id=turn_id,
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        # 6. Formatted CoALA Prompt Context
+        formatted_prompt = f"""[CoALA Architecture Active Memory Context]
+Session ID: {session_id} (Turn #{turn_id})
+Working Memory: {len(messages)} messages, active summary={bool(active_summary)}
+Episodic Memory Recall: {matched_episode.conversation_summary if matched_episode else 'None'}
+Semantic Grounding: {len(semantic_chunks)} chunks retrieved from CoALA Paper
+Procedural Guidelines: {len(proc_snap.rules)} behavioral rules enforced"""
+
+        return MemoryContext(
+            session_id=session_id,
+            turn_id=turn_id,
+            system_status=status_ctx,
+            working=working_ctx,
+            episodic=episodic_ctx,
+            semantic=semantic_ctx,
+            procedural=procedural_ctx,
+            formatted_prompt_context=formatted_prompt
+        )
+
+    def sync_session_messages(self, session_id: str, raw_messages: List[Dict[str, Any]]) -> int:
+        converted = []
+        for m in raw_messages:
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            if role == "user":
+                converted.append(HumanMessage(content=content))
+            elif role == "assistant":
+                converted.append(AIMessage(content=content))
+            else:
+                converted.append(SystemMessage(content=content))
+        self._session_messages[session_id] = converted
+        self._session_turns[session_id] = len([m for m in converted if isinstance(m, HumanMessage)])
+        logger.info(f"Synchronized {len(converted)} messages for session {session_id}")
+        return len(converted)
+

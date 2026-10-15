@@ -4,10 +4,11 @@ from backend.app.application.dtos.memory_dtos import (
     MemoryTopologyResponse,
     TopologyNode,
     TopologyEdge,
-    MemoryDiffsListResponse
+    MemoryDiffsListResponse,
+    SyncSessionContextRequest
 )
 from backend.app.domain.models.diff import TurnMemoryDiff
-from backend.app.domain.models.memory import SemanticChunk, EpisodicRecord
+from backend.app.domain.models.memory import SemanticChunk, EpisodicRecord, MemoryContext
 from backend.app.application.services.snapshot_service import SnapshotCoordinatorService
 from backend.app.presentation.dependencies import get_coordinator_service
 from backend.app.core.logging import get_logger
@@ -195,3 +196,39 @@ def search_episodic(
     coordinator: SnapshotCoordinatorService = Depends(get_coordinator_service)
 ):
     return coordinator.vector_db.search_episodic(query)
+
+@router.get(
+    "/memories/context/{session_id}",
+    response_model=MemoryContext,
+    summary="Get unified multi-tier memory context for a session"
+)
+def get_memory_context(
+    session_id: str,
+    query: Optional[str] = Query(None, description="Optional search query to ground episodic and semantic context"),
+    coordinator: SnapshotCoordinatorService = Depends(get_coordinator_service)
+):
+    """
+    Returns the complete aggregated CoALA Memory Context:
+    Working, Episodic, Semantic, Procedural memory, and active System Status.
+    """
+    return coordinator.get_memory_context(session_id, query)
+
+@router.post(
+    "/memories/context/{session_id}/sync",
+    summary="Synchronize session messages into backend memory context"
+)
+def sync_session_context(
+    session_id: str,
+    payload: SyncSessionContextRequest,
+    coordinator: SnapshotCoordinatorService = Depends(get_coordinator_service)
+):
+    """
+    Synchronizes client session history into backend memory context store.
+    """
+    synced_count = coordinator.sync_session_messages(session_id, payload.messages)
+    return {
+        "status": "success",
+        "session_id": session_id,
+        "synced_messages_count": synced_count
+    }
+

@@ -36,3 +36,10 @@ class ProceduralResponse(BaseModel):
 class MemoryDiffsListResponse(BaseModel):
     session_id: str
     diffs: List[TurnMemoryDiff]
+
+class SyncSessionContextRequest(BaseModel):
+    session_id: str
+    messages: List[Dict[str, Any]] = Field(default_factory=list)
+
+from backend.app.domain.models.memory import MemoryContext
+

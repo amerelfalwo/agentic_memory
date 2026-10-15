@@ -15,3 +15,5 @@ class AgentState(TypedDict, total=False):
     security_blocked: bool
     blocked_reason: Optional[str]
     retrieved_chunks: List[Dict[str, Any]]
+    memory_context: Optional[Dict[str, Any]]
+

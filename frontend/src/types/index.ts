@@ -126,3 +126,53 @@ export interface ChatMessage {
   blockedReason?: string | null;
   diff?: TurnMemoryDiff;
 }
+
+export interface WorkingMemoryContext {
+  message_count: number;
+  is_summarized: boolean;
+  active_summary?: string | null;
+  estimated_tokens: number;
+  recent_messages: Array<{ role: string; content: string }>;
+}
+
+export interface EpisodicMemoryContext {
+  storage: string;
+  matched_prior_episode?: EpisodicRecord | null;
+  recent_reflections: EpisodicRecord[];
+  what_worked: string[];
+  what_to_avoid: string[];
+}
+
+export interface SemanticMemoryContext {
+  source: string;
+  retrieved_chunks: SemanticChunk[];
+  total_chunks_available: number;
+}
+
+export interface ProceduralMemoryContext {
+  total_rules: number;
+  rules: ProceduralRule[];
+  raw_text: string;
+  last_updated: string;
+}
+
+export interface SystemStatusContext {
+  vector_db_connected: boolean;
+  model_name: string;
+  guardrail_armed: boolean;
+  session_id: string;
+  turn_id: number;
+  timestamp: string;
+}
+
+export interface BackendMemoryContext {
+  session_id: string;
+  turn_id: number;
+  system_status: SystemStatusContext;
+  working: WorkingMemoryContext;
+  episodic: EpisodicMemoryContext;
+  semantic: SemanticMemoryContext;
+  procedural: ProceduralMemoryContext;
+  formatted_prompt_context?: string | null;
+}
+
