@@ -105,6 +105,32 @@ class SnapshotCoordinatorService:
         )
         return snapshot
 
+    @staticmethod
+    def _is_simple_greeting(text: str) -> bool:
+        clean = text.strip().lower()
+        simple_phrases = {
+            "hi", "hello", "hey", "hola", "yo", "sup", "greetings", "good morning", "good evening",
+            "مرحبا", "اهلا", "أهلا", "سلام", "السلام عليكم", "صباح الخير", "مساء الخير", "يا هلا",
+            "thanks", "thank you", "thx", "شكرا", "مشكور", "تسلم", "يعطيك العافية", "ألف شكر",
+            "ok", "okay", "cool", "fine", "تمام", "ماشي", "حسنا", "حلو", "عظيم", "ممتاز",
+            "bye", "goodbye", "مع السلامة", "باي", "يلا باي",
+            "who are you", "من انت", "من أنت", "عرف نفسك"
+        }
+        if clean in simple_phrases:
+            return True
+
+        acknowledgments = (
+            "thanks", "thank you", "thx", "شكرا", "مشكور", "تسلم", "يعطيك العافية",
+            "hi ", "hello ", "hey ", "مرحبا ", "اهلا ", "أهلا ", "سلام ",
+            "great", "cool", "nice", "ok", "okay", "تمام", "ممتاز"
+        )
+        keywords = ["coala", "memory", "rag", "vector", "episodic", "procedural", "semantic", "architecture", "guardrail", "agent", "paper", "concept", "framework"]
+        if clean.startswith(acknowledgments) and not any(k in clean for k in keywords):
+            return True
+        if len(clean) <= 18 and not any(k in clean for k in keywords):
+            return True
+        return False
+
     def execute_turn(self, session_id: str, user_input: str) -> Dict[str, Any]:
         turn_id = self._session_turns.get(session_id, 0) + 1
         self._session_turns[session_id] = turn_id
@@ -112,29 +138,37 @@ class SnapshotCoordinatorService:
         # 1. Capture BEFORE snapshot
         before_snap = self.capture_snapshot(session_id, turn_id)
 
-        # 2. Memory Recall Phase
-        # Recall Episodic
-        matched_episodic = self.vector_db.search_episodic(user_input, limit=1)
-        # Recall Semantic
-        semantic_chunks = self.vector_db.search_semantic(user_input, limit=4)
+        # 2. Fast-path check for simple greetings to deliver instant sub-second response
+        is_simple = self._is_simple_greeting(user_input)
+
+        if is_simple:
+            matched_episodic = None
+            semantic_chunks = []
+            semantic_summary = "Conversational greeting turn."
+            prior_convo = "N/A"
+            what_worked = "Provide direct, warm, concise assistance."
+            what_to_avoid = "Overcomplicating simple conversational greetings."
+        else:
+            # Memory Recall Phase (Substantive queries)
+            matched_episodic = self.vector_db.search_episodic(user_input, limit=1)
+            semantic_chunks = self.vector_db.search_semantic(user_input, limit=4)
+            prior_convo = matched_episodic.conversation if matched_episodic else "N/A"
+            what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear factual responses."
+            what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations."
+
+            semantic_text_parts = []
+            if semantic_chunks:
+                for idx, sc in enumerate(semantic_chunks):
+                    txt = getattr(sc, "text", str(sc))
+                    score = getattr(sc, "score", None)
+                    score_str = f" (relevance: {score:.2f})" if score is not None else ""
+                    semantic_text_parts.append(f"- Chunk {idx + 1}{score_str}: {txt}")
+            semantic_summary = "\n".join(semantic_text_parts) if semantic_text_parts else "No direct semantic chunks retrieved."
 
         # 3. Procedural Guidelines
         current_procedural = self.procedural_repo.get_snapshot().raw_text
 
         # 4. Construct System Prompt with multi-tier memories
-        prior_convo = matched_episodic.conversation if matched_episodic else "N/A"
-        what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear factual responses."
-        what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations."
-
-        semantic_text_parts = []
-        if semantic_chunks:
-            for idx, sc in enumerate(semantic_chunks):
-                txt = getattr(sc, "text", str(sc))
-                score = getattr(sc, "score", None)
-                score_str = f" (relevance: {score:.2f})" if score is not None else ""
-                semantic_text_parts.append(f"- Chunk {idx + 1}{score_str}: {txt}")
-        semantic_summary = "\n".join(semantic_text_parts) if semantic_text_parts else "No direct semantic chunks retrieved."
-
         sys_content = f"""You are Mnemos, an advanced Cognitive Memory AI Agent built on the CoALA framework.
 
 [Episodic Memory (Past Learnings & Experiences)]
@@ -166,6 +200,7 @@ class SnapshotCoordinatorService:
             "end": False,
             "session_id": session_id,
             "turn_id": turn_id,
+            "is_simple_turn": is_simple,
             "retrieved_chunks": [
                 c.model_dump() if hasattr(c, "model_dump") else (c.dict() if hasattr(c, "dict") else {"text": getattr(c, "text", str(c))})
                 for c in semantic_chunks
@@ -195,32 +230,8 @@ class SnapshotCoordinatorService:
         # Update persistent session history
         self._session_messages[session_id] = [m for m in final_messages if not isinstance(m, SystemMessage)]
 
-        # 6. Evaluate if reflection is warranted (e.g. periodically or on explicit milestones)
+        # 6. Reflection is managed asynchronously by update_memory node in background
         new_reflection = None
-        if len(self._session_messages[session_id]) % 2 == 0 and len(self._session_messages[session_id]) >= 2:
-            try:
-                reflection_dict = self.llm_service.reflect_conversation(
-                    format_conversation_for_summary(self._session_messages[session_id])
-                )
-                new_reflection = EpisodicRecord(
-                    conversation=f"Turn {turn_id}: {user_input} -> {response_text[:100]}",
-                    context_tags=reflection_dict.get("context_tags", ["auto_reflection"]),
-                    conversation_summary=reflection_dict.get("conversation_summary", "Turn reflection"),
-                    what_worked=reflection_dict.get("what_worked", "Direct adherence to prompt"),
-                    what_to_avoid=reflection_dict.get("what_to_avoid", "Overcomplicating explanations")
-                )
-                self.vector_db.insert_episodic(new_reflection)
-                
-                # Check procedural evolution
-                updated_rules = self.llm_service.synthesize_procedural_rules(
-                    current_rules=current_procedural,
-                    what_worked=new_reflection.what_worked,
-                    what_to_avoid=new_reflection.what_to_avoid
-                )
-                if updated_rules != current_procedural:
-                    self.procedural_repo.save_rules(updated_rules)
-            except Exception as e:
-                logger.warning(f"Turn reflection error: {e}")
 
         # 7. Capture AFTER snapshot
         after_snap = self.capture_snapshot(

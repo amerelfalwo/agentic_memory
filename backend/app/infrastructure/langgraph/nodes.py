@@ -7,6 +7,7 @@ from backend.app.domain.ports.vector_db_port import IVectorDBPort
 from backend.app.domain.ports.llm_port import ILLMPort
 from backend.app.domain.ports.memory_port import IProceduralRepository
 from backend.app.domain.models.memory import EpisodicRecord
+from backend.app.core.config import settings
 from backend.app.core.logging import get_logger
 
 logger = get_logger("langgraph_nodes")
@@ -60,7 +61,7 @@ class NodeFactory:
 
     def summarize_history(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
-        if len(messages) <= 4:
+        if len(messages) <= settings.SUMMARIZE_THRESHOLD:
             return {}
         
         to_summarize = messages[1:-2]
@@ -95,7 +96,7 @@ class NodeFactory:
 
     def update_memory(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
-        if len(messages) < 2:
+        if len(messages) < 2 or state.get("is_simple_turn", False):
             return {}
 
         try:
@@ -103,32 +104,35 @@ class NodeFactory:
             filtered_msgs = [m for m in messages if not isinstance(m, SystemMessage)]
             conv_text = format_conversation_for_summary(filtered_msgs)
 
-            # 1. Reflect episodic memory
-            reflection = self.llm_service.reflect_conversation(conv_text)
-            episodic_record = EpisodicRecord(
-                conversation=conv_text,
-                context_tags=reflection.get("context_tags", ["general"]),
-                conversation_summary=reflection.get("conversation_summary", "Discussion summary"),
-                what_worked=reflection.get("what_worked", "Clear assistance"),
-                what_to_avoid=reflection.get("what_to_avoid", "Vague answers")
-            )
-            self.vector_db.insert_episodic(episodic_record)
+            # Fast background consolidation so the user response is delivered with 0ms latency penalty
+            def _async_consolidation():
+                try:
+                    reflection = self.llm_service.reflect_conversation(conv_text)
+                    episodic_record = EpisodicRecord(
+                        conversation=conv_text,
+                        context_tags=reflection.get("context_tags", ["general"]),
+                        conversation_summary=reflection.get("conversation_summary", "Discussion summary"),
+                        what_worked=reflection.get("what_worked", "Clear assistance"),
+                        what_to_avoid=reflection.get("what_to_avoid", "Vague answers")
+                    )
+                    self.vector_db.insert_episodic(episodic_record)
 
-            # 2. Refine procedural guidelines
-            current_proc = self.procedural_repo.get_snapshot().raw_text
-            updated_rules = self.llm_service.synthesize_procedural_rules(
-                current_rules=current_proc,
-                what_worked=episodic_record.what_worked,
-                what_to_avoid=episodic_record.what_to_avoid
-            )
-            if updated_rules != current_proc:
-                self.procedural_repo.save_rules(updated_rules)
-                logger.info("Updated procedural memory guidelines following reflection.")
+                    current_proc = self.procedural_repo.get_snapshot().raw_text
+                    updated_rules = self.llm_service.synthesize_procedural_rules(
+                        current_rules=current_proc,
+                        what_worked=episodic_record.what_worked,
+                        what_to_avoid=episodic_record.what_to_avoid
+                    )
+                    if updated_rules != current_proc:
+                        self.procedural_repo.save_rules(updated_rules)
+                        logger.info("Updated procedural memory guidelines following background reflection.")
+                except Exception as inner_e:
+                    logger.warning(f"Background memory consolidation error: {inner_e}")
 
-            return {
-                "what_worked": state.get("what_worked", []) + [episodic_record.what_worked],
-                "what_to_avoid": state.get("what_to_avoid", []) + [episodic_record.what_to_avoid]
-            }
+            import threading
+            threading.Thread(target=_async_consolidation, daemon=True).start()
+
+            return {}
         except Exception as e:
             logger.warning(f"update_memory reflection encountered an error: {e}")
             return {}
