@@ -5,7 +5,7 @@ import { EditorialMemoryGraph } from '../../components/graph/EditorialMemoryGrap
 
 export default function MemoryGraphPage() {
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-53px)] bg-[#F6F6F0]">
+    <div className="w-full h-[calc(100vh-53px)] min-h-[600px] flex flex-col bg-[#F6F6F0] overflow-hidden">
       <EditorialMemoryGraph />
     </div>
   );

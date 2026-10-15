@@ -157,47 +157,109 @@ const nodeTypes = {
   editorial: EditorialNode
 };
 
+const DEFAULT_TOPOLOGY_NODES: TopologyNode[] = [
+  {
+    id: 'agent-core',
+    label: 'Mnemos Core Agent (LLM)',
+    type: 'agent',
+    status: 'active',
+    details: { model: 'qwen/qwen3.8-27b', current_turn: 1, active_messages: 2 }
+  },
+  {
+    id: 'working-memory',
+    label: '⚡ Working Memory',
+    type: 'memory_working',
+    status: 'active',
+    details: { message_count: 2, is_summarized: false, tokens: 240 }
+  },
+  {
+    id: 'episodic-memory',
+    label: '📖 Episodic Memory',
+    type: 'memory_episodic',
+    status: 'active',
+    details: { storage: 'Weaviate Vector DB', collection: 'episodic_memory', recall_mode: 'Hybrid (Vector + BM25)' }
+  },
+  {
+    id: 'semantic-memory',
+    label: '📚 Semantic Memory',
+    type: 'memory_semantic',
+    status: 'active',
+    details: { source: 'CoALA_Paper.pdf', collection: 'CoALA_Paper', hybrid_alpha: 0.5 }
+  },
+  {
+    id: 'procedural-memory',
+    label: '📋 Procedural Memory',
+    type: 'memory_procedural',
+    status: 'active',
+    details: { total_guidelines: 10, last_updated: 'Live Synchronized' }
+  },
+  {
+    id: 'guardrail-node',
+    label: '🛡️ Security Guardrail',
+    type: 'guardrail',
+    status: 'active',
+    details: { protection: 'Prompt Injection Defense', state: 'Armed' }
+  },
+  {
+    id: 'tools-node',
+    label: '🔧 External Tools / MCP',
+    type: 'tools',
+    status: 'active',
+    details: { registered_tools: ['search_knowledge_base'] }
+  }
+];
+
+const DEFAULT_TOPOLOGY_EDGES = [
+  { id: 'e-guard-agent', source: 'guardrail-node', target: 'agent-core', label: 'Input Guardrail Check', animated: true, active: true },
+  { id: 'e-agent-working', source: 'agent-core', target: 'working-memory', label: 'Read Buffer / Append Dialogue', animated: true, active: true },
+  { id: 'e-agent-episodic', source: 'agent-core', target: 'episodic-memory', label: 'Recall Reflections / Store Learnings', animated: true, active: true },
+  { id: 'e-agent-semantic', source: 'agent-core', target: 'semantic-memory', label: 'Hybrid Vector Retrieval', animated: true, active: true },
+  { id: 'e-agent-procedural', source: 'agent-core', target: 'procedural-memory', label: 'Read Guidelines / Synthesize Evolution', animated: true, active: true },
+  { id: 'e-agent-tools', source: 'agent-core', target: 'tools-node', label: 'Tool Dispatch', animated: false, active: false }
+];
+
+const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
+  'guardrail-node': { x: 50, y: 60 },
+  'working-memory': { x: 380, y: 40 },
+  'agent-core': { x: 380, y: 220 },
+  'procedural-memory': { x: 50, y: 230 },
+  'episodic-memory': { x: 720, y: 220 },
+  'semantic-memory': { x: 380, y: 410 },
+  'tools-node': { x: 720, y: 410 }
+};
+
 const GraphCanvasInner: React.FC = () => {
   const { topology } = useMemory();
   const [selectedNode, setSelectedNode] = useState<TopologyNode | null>(null);
   const reactFlowInstance = useReactFlow();
 
-  const initialNodes: Node[] = useMemo(() => {
-    if (!topology || !topology.nodes) return [];
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
-    const positions: Record<string, { x: number; y: number }> = {
-      'guardrail-node': { x: 40, y: 50 },
-      'working-memory': { x: 320, y: 30 },
-      'agent-core': { x: 320, y: 190 },
-      'procedural-memory': { x: 40, y: 200 },
-      'episodic-memory': { x: 600, y: 190 },
-      'semantic-memory': { x: 320, y: 360 },
-      'tools-node': { x: 600, y: 360 }
-    };
+  // Synchronize nodes & edges with live topology or fallback default
+  React.useEffect(() => {
+    const rawNodes = topology?.nodes && topology.nodes.length > 0 ? topology.nodes : DEFAULT_TOPOLOGY_NODES;
+    const rawEdges = topology?.edges && topology.edges.length > 0 ? topology.edges : DEFAULT_TOPOLOGY_EDGES;
 
-    return topology.nodes.map((node) => ({
+    const formattedNodes: Node[] = rawNodes.map((node) => ({
       id: node.id,
       type: 'editorial',
-      position: positions[node.id] || { x: 300, y: 200 },
+      position: NODE_POSITIONS[node.id] || { x: 380, y: 220 },
       data: {
         ...node,
         isSelected: selectedNode?.id === node.id
       }
     }));
-  }, [topology, selectedNode]);
 
-  const initialEdges: Edge[] = useMemo(() => {
-    if (!topology || !topology.edges) return [];
-
-    return topology.edges.map((edge) => ({
+    const formattedEdges: Edge[] = rawEdges.map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
       label: edge.label,
-      animated: false,
+      animated: edge.animated || edge.active || false,
       style: {
-        stroke: '#8DAA91',
-        strokeWidth: 1.5
+        stroke: edge.active ? '#285943' : '#8DAA91',
+        strokeWidth: edge.active ? 2 : 1.5
       },
       labelStyle: {
         fill: '#242A25',
@@ -214,28 +276,40 @@ const GraphCanvasInner: React.FC = () => {
       },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: '#8DAA91',
+        color: edge.active ? '#285943' : '#8DAA91',
         width: 12,
         height: 12
       }
     }));
-  }, [topology]);
+
+    setNodes(formattedNodes);
+    setEdges(formattedEdges);
+
+    const timer = setTimeout(() => {
+      try {
+        reactFlowInstance?.fitView({ padding: 0.25, duration: 300 });
+      } catch (e) {}
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [topology, selectedNode, reactFlowInstance]);
 
   const onNodeClick = (_: any, node: Node) => {
-    if (topology) {
-      const found = topology.nodes.find((n) => n.id === node.id);
-      setSelectedNode(found || null);
-    }
+    const rawNodes = topology?.nodes && topology.nodes.length > 0 ? topology.nodes : DEFAULT_TOPOLOGY_NODES;
+    const found = rawNodes.find((n) => n.id === node.id);
+    setSelectedNode(found || null);
   };
 
   const handleFitView = () => {
-    reactFlowInstance.fitView({ padding: 0.2, duration: 400 });
+    try {
+      reactFlowInstance.fitView({ padding: 0.25, duration: 400 });
+    } catch (e) {}
   };
 
   return (
-    <div className="flex-1 w-full h-full relative flex flex-col bg-[#F6F6F0]">
+    <div className="w-full h-full min-h-[600px] flex flex-col bg-[#F6F6F0] relative">
       {/* Canvas Header / Controls Bar */}
-      <div className="px-6 py-3 border-b border-[#DFE5DD] bg-[#FFFFFF] flex items-center justify-between text-xs text-[#737B74]">
+      <div className="h-12 px-6 border-b border-[#DFE5DD] bg-[#FFFFFF] flex items-center justify-between text-xs text-[#737B74] shrink-0">
         <div className="flex items-center space-x-2">
           <span className="font-semibold text-[#242A25]">Agent-Memory Mesh Topology</span>
           <span className="text-[#DFE5DD]">|</span>
@@ -245,7 +319,7 @@ const GraphCanvasInner: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={handleFitView}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-[#F6F6F0] hover:bg-[#E8F0E8] border border-[#DFE5DD] text-[#285943] text-xs font-medium transition-colors"
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-[#F6F6F0] hover:bg-[#E8F0E8] border border-[#DFE5DD] text-[#285943] text-xs font-medium transition-colors cursor-pointer"
           >
             <Maximize2 className="w-3.5 h-3.5" />
             <span>Fit Graph</span>
@@ -253,17 +327,17 @@ const GraphCanvasInner: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Flow Canvas */}
-      <div className="flex-1 w-full h-full relative">
+      {/* Main Flow Canvas with explicit height */}
+      <div className="w-full flex-1 min-h-[550px] relative">
         <ReactFlow
-          nodes={initialNodes}
-          edges={initialEdges}
+          nodes={nodes}
+          edges={edges}
           nodeTypes={nodeTypes}
           onNodeClick={onNodeClick}
           fitView
-          minZoom={0.5}
-          maxZoom={1.5}
-          className="bg-[#F6F6F0]"
+          minZoom={0.3}
+          maxZoom={1.8}
+          className="bg-[#F6F6F0] w-full h-full"
         >
           <Background color="#DFE5DD" gap={24} size={1} />
           <Controls className="!bg-[#FFFFFF] !border-[#DFE5DD] !shadow-xs" />
