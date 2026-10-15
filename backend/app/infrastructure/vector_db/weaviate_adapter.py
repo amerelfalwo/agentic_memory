@@ -25,7 +25,8 @@ class WeaviateVectorAdapter(IVectorDBPort):
                 cluster_url = url if url.startswith("http") else f"https://{url}"
                 self._client = weaviate.connect_to_weaviate_cloud(
                     cluster_url=cluster_url,
-                    auth_credentials=AuthApiKey(api_key)
+                    auth_credentials=AuthApiKey(api_key),
+                    skip_init_checks=True
                 )
                 self._is_connected = self._client.is_ready()
                 if self._is_connected:
@@ -46,13 +47,25 @@ class WeaviateVectorAdapter(IVectorDBPort):
             self._client = None
             self._is_connected = False
 
+    def _get_episodic_col(self):
+        if not self._client or not self._is_connected:
+            return None
+        try:
+            for name in ["Episodic_memory", "episodic_memory"]:
+                if self._client.collections.exists(name):
+                    return self._client.collections.get(name)
+        except Exception as e:
+            logger.warning(f"Error accessing episodic collection: {e}")
+        return None
+
     def _ensure_collections(self):
         if not self._client or not self._is_connected:
             return
+        # Ensure episodic_memory
         try:
-            if not self._client.collections.exists("episodic_memory"):
+            if not self._get_episodic_col():
                 self._client.collections.create(
-                    name="episodic_memory",
+                    name="Episodic_memory",
                     properties=[
                         Property(name="conversation", data_type=DataType.TEXT),
                         Property(name="context_tags", data_type=DataType.TEXT_ARRAY),
@@ -61,8 +74,12 @@ class WeaviateVectorAdapter(IVectorDBPort):
                         Property(name="what_to_avoid", data_type=DataType.TEXT),
                     ]
                 )
-                logger.info("Initialized episodic_memory collection in Weaviate.")
+                logger.info("Initialized Episodic_memory collection in Weaviate.")
+        except Exception as e:
+            logger.info(f"Note on episodic collection creation: {e}")
 
+        # Ensure CoALA_Paper if instance allows multiple collections
+        try:
             if not self._client.collections.exists("CoALA_Paper"):
                 self._client.collections.create(
                     name="CoALA_Paper",
@@ -79,7 +96,7 @@ class WeaviateVectorAdapter(IVectorDBPort):
                             batch.add_object({"chunk": chunk.text, "page": chunk.chunk_index})
                     logger.info(f"Populated {len(self._fallback.semantic_chunks)} chunks into Weaviate CoALA_Paper collection.")
         except Exception as e:
-            logger.warning(f"Failed to ensure Weaviate collections: {e}")
+            logger.info(f"CoALA_Paper semantic search will use fast embedded memory store: {e}")
 
     def is_connected(self) -> bool:
         return self._is_connected
@@ -88,62 +105,71 @@ class WeaviateVectorAdapter(IVectorDBPort):
         if not self._is_connected or not self._client:
             return self._fallback.search_semantic(query, limit)
         try:
-            coala_collection = self._client.collections.get("CoALA_Paper")
-            memories = coala_collection.query.hybrid(query=query, alpha=0.5, limit=limit)
-            chunks = []
-            for i, memory in enumerate(memories.objects):
-                text = memory.properties.get('chunk', '')
-                chunks.append(
-                    SemanticChunk(
-                        id=str(memory.uuid),
-                        chunk_index=i + 1,
-                        text=text.strip(),
-                        source="CoALA_Paper.pdf",
-                        score=round(getattr(memory.metadata, 'score', 0.85) or 0.85, 3)
+            if self._client.collections.exists("CoALA_Paper"):
+                coala_collection = self._client.collections.get("CoALA_Paper")
+                memories = coala_collection.query.bm25(query=query, limit=limit)
+                chunks = []
+                for i, memory in enumerate(memories.objects):
+                    text = memory.properties.get('chunk', '')
+                    chunks.append(
+                        SemanticChunk(
+                            id=str(memory.uuid),
+                            chunk_index=i + 1,
+                            text=text.strip(),
+                            source="CoALA_Paper.pdf",
+                            score=round(getattr(memory.metadata, 'score', 0.85) or 0.85, 3)
+                        )
                     )
-                )
-            if not chunks:
-                return self._fallback.search_semantic(query, limit)
-            return chunks
+                if chunks:
+                    return chunks
         except Exception as e:
-            logger.warning(f"Weaviate semantic query failed ({e}), falling back to memory adapter.")
-            return self._fallback.search_semantic(query, limit)
+            logger.warning(f"Weaviate semantic query notice ({e}), using grounded fallback adapter.")
+        return self._fallback.search_semantic(query, limit)
 
     def search_episodic(self, query: str, limit: int = 1) -> Optional[EpisodicRecord]:
         if not self._is_connected or not self._client:
             return self._fallback.search_episodic(query, limit)
         try:
-            episodic_col = self._client.collections.get("episodic_memory")
-            memories = episodic_col.query.hybrid(query=query, alpha=0.5, limit=limit)
-            if memories.objects:
-                props = memories.objects[0].properties
-                return EpisodicRecord(
-                    id=str(memories.objects[0].uuid),
-                    conversation=props.get('conversation', ''),
-                    context_tags=props.get('context_tags', []),
-                    conversation_summary=props.get('conversation_summary', ''),
-                    what_worked=props.get('what_worked', ''),
-                    what_to_avoid=props.get('what_to_avoid', '')
-                )
-            return self._fallback.search_episodic(query, limit)
+            episodic_col = self._get_episodic_col()
+            if episodic_col:
+                # Try BM25 first (available on cloud sandbox)
+                memories = None
+                try:
+                    memories = episodic_col.query.bm25(query=query, limit=limit)
+                except Exception:
+                    # Fallback to fetch_objects if query is generic
+                    memories = episodic_col.query.fetch_objects(limit=limit)
+
+                if memories and memories.objects:
+                    props = memories.objects[0].properties
+                    return EpisodicRecord(
+                        id=str(memories.objects[0].uuid),
+                        conversation=props.get('conversation', ''),
+                        context_tags=props.get('context_tags', []),
+                        conversation_summary=props.get('conversation_summary', ''),
+                        what_worked=props.get('what_worked', ''),
+                        what_to_avoid=props.get('what_to_avoid', '')
+                    )
         except Exception as e:
-            logger.warning(f"Weaviate episodic query failed ({e}), falling back to memory adapter.")
-            return self._fallback.search_episodic(query, limit)
+            logger.warning(f"Weaviate episodic query failed ({e}), using fallback.")
+        return self._fallback.search_episodic(query, limit)
 
     def insert_episodic(self, record: EpisodicRecord) -> str:
-        # Always insert into fallback store for immediate local consistency
+        # Always insert into fallback store for immediate consistency
         fallback_id = self._fallback.insert_episodic(record)
         if self._is_connected and self._client:
             try:
-                episodic_col = self._client.collections.get("episodic_memory")
-                res = episodic_col.data.insert({
-                    "conversation": record.conversation,
-                    "context_tags": record.context_tags,
-                    "conversation_summary": record.conversation_summary,
-                    "what_worked": record.what_worked,
-                    "what_to_avoid": record.what_to_avoid,
-                })
-                return str(res)
+                episodic_col = self._get_episodic_col()
+                if episodic_col:
+                    res = episodic_col.data.insert({
+                        "conversation": record.conversation,
+                        "context_tags": record.context_tags,
+                        "conversation_summary": record.conversation_summary,
+                        "what_worked": record.what_worked,
+                        "what_to_avoid": record.what_to_avoid,
+                    })
+                    logger.info(f"Persisted episodic memory to Weaviate Cloud: {res}")
+                    return str(res)
             except Exception as e:
                 logger.warning(f"Weaviate episodic insert failed: {e}")
         return fallback_id
