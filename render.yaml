@@ -1,0 +1,52 @@
+services:
+  # -------------------------------------------------------------
+  # 1. FastAPI Backend Cognitive Memory AI Engine
+  # -------------------------------------------------------------
+  - type: web
+    name: mnemos-backend
+    runtime: python
+    region: frankfurt
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn backend.app.presentation.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_API_KEY
+        sync: false
+      - key: model
+        value: groq:qwen/qwen3.8-27b
+      - key: WEAVIATE_HOST
+        value: localhost
+      - key: WEAVIATE_PORT
+        value: "8085"
+      - key: WEAVIATE_URL
+        sync: false
+      - key: WEAVIATE_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: '["*"]'
+
+  # -------------------------------------------------------------
+  # 2. (Optional) Private Weaviate Vector DB Service
+  # -------------------------------------------------------------
+  # - type: pserv
+  #   name: weaviate-vector-db
+  #   runtime: image
+  #   image:
+  #     url: cr.weaviate.io/semitechnologies/weaviate:1.27.0
+  #   region: frankfurt
+  #   plan: starter
+  #   disk:
+  #     name: weaviate-storage
+  #     mountPath: /var/lib/weaviate
+  #     sizeGB: 10
+  #   envVars:
+  #     - key: AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED
+  #       value: 'true'
+  #     - key: PERSISTENCE_DATA_PATH
+  #       value: /var/lib/weaviate
+  #     - key: QUERY_DEFAULTS_LIMIT
+  #       value: '25'
