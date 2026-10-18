@@ -15,6 +15,8 @@ class WeaviateVectorAdapter(IVectorDBPort):
         self._fallback = InMemoryVectorAdapter()
         self._client = None
         self._is_connected = False
+        self._episodic_col = None
+        self._coala_col = None
         self._connect()
 
     def _connect(self):
@@ -32,6 +34,7 @@ class WeaviateVectorAdapter(IVectorDBPort):
                 if self._is_connected:
                     logger.info(f"Connected successfully to Weaviate Cloud at {cluster_url}")
                     self._ensure_collections()
+                    self._cache_collections()
                 else:
                     logger.warning("Weaviate Cloud connected but not ready.")
             else:
@@ -40,6 +43,7 @@ class WeaviateVectorAdapter(IVectorDBPort):
                 if self._is_connected:
                     logger.info(f"Connected successfully to local Weaviate on port {settings.WEAVIATE_PORT}")
                     self._ensure_collections()
+                    self._cache_collections()
                 else:
                     logger.warning("Weaviate is reachable but not ready, using fallback.")
         except Exception as e:
@@ -47,23 +51,42 @@ class WeaviateVectorAdapter(IVectorDBPort):
             self._client = None
             self._is_connected = False
 
-    def _get_episodic_col(self):
+    def _cache_collections(self):
         if not self._client or not self._is_connected:
-            return None
+            return
         try:
             for name in ["Episodic_memory", "episodic_memory"]:
                 if self._client.collections.exists(name):
-                    return self._client.collections.get(name)
+                    self._episodic_col = self._client.collections.get(name)
+                    break
         except Exception as e:
-            logger.warning(f"Error accessing episodic collection: {e}")
-        return None
+            logger.warning(f"Error caching episodic collection: {e}")
+
+        try:
+            if self._client.collections.exists("CoALA_Paper"):
+                self._coala_col = self._client.collections.get("CoALA_Paper")
+        except Exception as e:
+            logger.warning(f"Error caching CoALA_Paper collection: {e}")
+
+    def _get_episodic_col(self):
+        if self._episodic_col is not None:
+            return self._episodic_col
+        if not self._client or not self._is_connected:
+            return None
+        self._cache_collections()
+        return self._episodic_col
 
     def _ensure_collections(self):
         if not self._client or not self._is_connected:
             return
         # Ensure episodic_memory
         try:
-            if not self._get_episodic_col():
+            has_episodic = False
+            for name in ["Episodic_memory", "episodic_memory"]:
+                if self._client.collections.exists(name):
+                    has_episodic = True
+                    break
+            if not has_episodic:
                 self._client.collections.create(
                     name="Episodic_memory",
                     properties=[
@@ -105,9 +128,10 @@ class WeaviateVectorAdapter(IVectorDBPort):
         if not self._is_connected or not self._client:
             return self._fallback.search_semantic(query, limit)
         try:
-            if self._client.collections.exists("CoALA_Paper"):
-                coala_collection = self._client.collections.get("CoALA_Paper")
-                memories = coala_collection.query.bm25(query=query, limit=limit)
+            if self._coala_col is None:
+                self._cache_collections()
+            if self._coala_col is not None:
+                memories = self._coala_col.query.bm25(query=query, limit=limit)
                 chunks = []
                 for i, memory in enumerate(memories.objects):
                     text = memory.properties.get('chunk', '')

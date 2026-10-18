@@ -1,5 +1,6 @@
 import time
 import json
+import concurrent.futures
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import uuid
@@ -148,16 +149,19 @@ class SnapshotCoordinatorService:
         before_snap = self.capture_snapshot(session_id, turn_id)
         timing_data["stages"]["snapshot_capture"] += (time.perf_counter() - t0) * 1000
 
-        # 2. Memory Recall Phase
-        # Recall Episodic
-        t0 = time.perf_counter()
-        matched_episodic = self.vector_db.search_episodic(user_input, limit=1)
-        timing_data["stages"]["episodic_search"] += (time.perf_counter() - t0) * 1000
+        # 2. Memory Recall Phase (concurrent retrieval)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            t_ep_start = time.perf_counter()
+            future_ep = executor.submit(self.vector_db.search_episodic, user_input, 1)
 
-        # Recall Semantic
-        t0 = time.perf_counter()
-        semantic_chunks = self.vector_db.search_semantic(user_input, limit=4)
-        timing_data["stages"]["semantic_search"] += (time.perf_counter() - t0) * 1000
+            t_sem_start = time.perf_counter()
+            future_sem = executor.submit(self.vector_db.search_semantic, user_input, 4)
+
+            matched_episodic = future_ep.result()
+            timing_data["stages"]["episodic_search"] += (time.perf_counter() - t_ep_start) * 1000
+
+            semantic_chunks = future_sem.result()
+            timing_data["stages"]["semantic_search"] += (time.perf_counter() - t_sem_start) * 1000
 
         # 3. Procedural Guidelines
         current_procedural = self.procedural_repo.get_snapshot().raw_text
