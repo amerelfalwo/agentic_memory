@@ -64,6 +64,7 @@ class GroqLLMAdapter(ILLMPort):
         self._api_key = settings.GROQ_API_KEY
         self._model_name = settings.MODEL_NAME
         self._llm = None
+        self._fast_llm = None
         self._init_llm()
 
     def _init_llm(self):
@@ -72,15 +73,28 @@ class GroqLLMAdapter(ILLMPort):
                 self._llm = ChatGroq(
                     api_key=self._api_key,
                     model=self._model_name,
-                    temperature=0.7
+                    temperature=0.7,
+                    max_tokens=450
                 )
-                logger.info(f"Initialized ChatGroq with model: {self._model_name}")
+                logger.info(f"Initialized ChatGroq primary model: {self._model_name} (max_tokens=450)")
             except Exception as e:
                 logger.error(f"Failed to initialize ChatGroq: {e}. Falling back to simulated LLM.")
                 self._llm = None
+
+            try:
+                self._fast_llm = ChatGroq(
+                    api_key=self._api_key,
+                    model="openai/gpt-oss-20b",
+                    temperature=0.5,
+                    max_tokens=300
+                )
+                logger.info("Initialized ChatGroq fast model: openai/gpt-oss-20b for background reflection & fallback")
+            except Exception as e:
+                self._fast_llm = None
         else:
             logger.warning("No valid GROQ_API_KEY detected in .env. Running in simulated intelligent agent mode.")
             self._llm = None
+            self._fast_llm = None
 
     def is_live(self) -> bool:
         return self._llm is not None
@@ -93,7 +107,12 @@ class GroqLLMAdapter(ILLMPort):
             try:
                 return self._llm.invoke(messages)
             except Exception as e:
-                logger.error(f"Groq API call error: {e}. Providing fallback.")
+                logger.warning(f"Primary model invoke warning ({e}), failing fast over to secondary fast model.")
+                if self._fast_llm:
+                    try:
+                        return self._fast_llm.invoke(messages)
+                    except Exception as fe:
+                        logger.error(f"Secondary model invoke error: {fe}")
         
         # Fallback simulation
         last_msg = messages[-1].content if hasattr(messages[-1], "content") else str(messages[-1])
@@ -102,9 +121,10 @@ class GroqLLMAdapter(ILLMPort):
         )
 
     def stream(self, messages: List[Any]):
-        if self._llm:
+        target_llm = self._llm or self._fast_llm
+        if target_llm:
             try:
-                for chunk in self._llm.stream(messages):
+                for chunk in target_llm.stream(messages):
                     if chunk.content:
                         yield chunk.content
                 return
@@ -118,15 +138,16 @@ class GroqLLMAdapter(ILLMPort):
             yield word + " "
 
     def reflect_conversation(self, conversation_text: str) -> Dict[str, Any]:
-        if self._llm:
+        target_llm = self._fast_llm or self._llm
+        if target_llm:
             try:
                 prompt = ChatPromptTemplate.from_template(REFLECTION_PROMPT_TEMPLATE)
-                chain = prompt | self._llm | JsonOutputParser()
+                chain = prompt | target_llm | JsonOutputParser()
                 res = chain.invoke({"conversation": conversation_text})
                 if isinstance(res, dict) and "conversation_summary" in res:
                     return res
             except Exception as e:
-                logger.warning(f"Groq reflection chain failed: {e}")
+                logger.warning(f"Groq reflection chain notice: {e}")
 
         # Intelligent default reflection
         lines = [l for l in conversation_text.split("\n") if l.strip()]
@@ -139,18 +160,19 @@ class GroqLLMAdapter(ILLMPort):
         }
 
     def synthesize_procedural_rules(self, current_rules: str, what_worked: str, what_to_avoid: str) -> str:
-        if self._llm:
+        target_llm = self._fast_llm or self._llm
+        if target_llm:
             try:
                 prompt = PROCEDURAL_SYNTHESIS_TEMPLATE.format(
                     current_takeaways=current_rules,
                     what_worked=what_worked,
                     what_to_avoid=what_to_avoid
                 )
-                res = self._llm.invoke(prompt)
+                res = target_llm.invoke(prompt)
                 if res and res.content and "1." in res.content:
                     return res.content.strip()
             except Exception as e:
-                logger.warning(f"Procedural rule synthesis failed: {e}")
+                logger.warning(f"Procedural rule synthesis notice: {e}")
 
         # Conservative fallback: return current rules
         return current_rules

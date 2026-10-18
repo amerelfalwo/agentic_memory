@@ -72,14 +72,16 @@ async def execute_chat_stream(
         }
         await asyncio.sleep(0.05)
 
-        # Stream words/tokens of the response
+        # Stream words/tokens of the response smoothly and rapidly
         words = turn_result["response"].split(" ")
-        for i, word in enumerate(words):
+        chunk_size = 2
+        for i in range(0, len(words), chunk_size):
+            chunk = " ".join(words[i:i + chunk_size]) + (" " if i + chunk_size < len(words) else "")
             yield {
                 "event": "token",
-                "data": json.dumps({"token": word + (" " if i < len(words) - 1 else "")})
+                "data": json.dumps({"token": chunk})
             }
-            await asyncio.sleep(0.02)
+            await asyncio.sleep(0.004)
 
         # Emit final turn diff and snapshot event
         yield {

@@ -8,6 +8,7 @@ from backend.app.domain.ports.vector_db_port import IVectorDBPort
 from backend.app.domain.ports.llm_port import ILLMPort
 from backend.app.domain.ports.memory_port import IProceduralRepository
 from backend.app.domain.models.memory import EpisodicRecord
+from backend.app.core.config import settings
 from backend.app.core.logging import get_logger
 
 logger = get_logger("langgraph_nodes")
@@ -70,8 +71,8 @@ class NodeFactory:
     def summarize_history(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
         timing = state.get("timing_data")
-        if len(messages) <= 4:
-            return {"timing_data": timing}
+        if len(messages) <= settings.SUMMARIZE_THRESHOLD:
+            return {"timing_data": timing} if timing else {}
         
         to_summarize = messages[1:-2]
         formatted = format_conversation_for_summary(to_summarize)
@@ -128,53 +129,43 @@ class NodeFactory:
     def update_memory(self, state: AgentState) -> Dict[str, Any]:
         messages = state.get("messages", [])
         timing = state.get("timing_data")
-        if len(messages) < 2:
-            return {"timing_data": timing}
+        if len(messages) < 2 or state.get("is_simple_turn", False):
+            return {"timing_data": timing} if timing else {}
 
         try:
             # Format conversation without initial system/semantic prompts
             filtered_msgs = [m for m in messages if not isinstance(m, SystemMessage)]
             conv_text = format_conversation_for_summary(filtered_msgs)
 
-            # 1. Reflect episodic memory
-            t0 = time.perf_counter()
-            reflection = self.llm_service.reflect_conversation(conv_text)
-            dur_reflect = (time.perf_counter() - t0) * 1000
-            if timing:
-                timing["stages"]["llm_reflect"] = timing["stages"].get("llm_reflect", 0.0) + dur_reflect
-                timing["llm_calls"]["reflect"] = timing["llm_calls"].get("reflect", 0) + 1
+            # Fast background consolidation so the user response is delivered with 0ms latency penalty
+            def _async_consolidation():
+                try:
+                    reflection = self.llm_service.reflect_conversation(conv_text)
+                    episodic_record = EpisodicRecord(
+                        conversation=conv_text,
+                        context_tags=reflection.get("context_tags", ["general"]),
+                        conversation_summary=reflection.get("conversation_summary", "Discussion summary"),
+                        what_worked=reflection.get("what_worked", "Clear assistance"),
+                        what_to_avoid=reflection.get("what_to_avoid", "Vague answers")
+                    )
+                    self.vector_db.insert_episodic(episodic_record)
 
-            episodic_record = EpisodicRecord(
-                conversation=conv_text,
-                context_tags=reflection.get("context_tags", ["general"]),
-                conversation_summary=reflection.get("conversation_summary", "Discussion summary"),
-                what_worked=reflection.get("what_worked", "Clear assistance"),
-                what_to_avoid=reflection.get("what_to_avoid", "Vague answers")
-            )
-            self.vector_db.insert_episodic(episodic_record)
+                    current_proc = self.procedural_repo.get_snapshot().raw_text
+                    updated_rules = self.llm_service.synthesize_procedural_rules(
+                        current_rules=current_proc,
+                        what_worked=episodic_record.what_worked,
+                        what_to_avoid=episodic_record.what_to_avoid
+                    )
+                    if updated_rules != current_proc:
+                        self.procedural_repo.save_rules(updated_rules)
+                        logger.info("Updated procedural memory guidelines following background reflection.")
+                except Exception as inner_e:
+                    logger.warning(f"Background memory consolidation error: {inner_e}")
 
-            # 2. Refine procedural guidelines
-            current_proc = self.procedural_repo.get_snapshot().raw_text
-            t0 = time.perf_counter()
-            updated_rules = self.llm_service.synthesize_procedural_rules(
-                current_rules=current_proc,
-                what_worked=episodic_record.what_worked,
-                what_to_avoid=episodic_record.what_to_avoid
-            )
-            dur_proc = (time.perf_counter() - t0) * 1000
-            if timing:
-                timing["stages"]["llm_procedural"] = timing["stages"].get("llm_procedural", 0.0) + dur_proc
-                timing["llm_calls"]["procedural"] = timing["llm_calls"].get("procedural", 0) + 1
+            import threading
+            threading.Thread(target=_async_consolidation, daemon=True).start()
 
-            if updated_rules != current_proc:
-                self.procedural_repo.save_rules(updated_rules)
-                logger.info("Updated procedural memory guidelines following reflection.")
-
-            return {
-                "what_worked": state.get("what_worked", []) + [episodic_record.what_worked],
-                "what_to_avoid": state.get("what_to_avoid", []) + [episodic_record.what_to_avoid],
-                "timing_data": timing
-            }
+            return {"timing_data": timing} if timing else {}
         except Exception as e:
             logger.warning(f"update_memory reflection encountered an error: {e}")
             return {"timing_data": timing}
