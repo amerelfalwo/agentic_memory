@@ -1,3 +1,14 @@
+---
+title: Mnemos Cognitive Memory Backend
+emoji: 🧠
+colorFrom: teal
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+license: apache-2.0
+---
+
 # Mnemos — Cognitive Memory AI Engine 🧠⚡
 
 [![Deploy with Vercel](https://img.shields.io/badge/Frontend-Vercel-black?logo=vercel&style=flat-square)](https://rapid-geode-upm1g2t.vercel.app)
