@@ -7,7 +7,6 @@ os.environ["GRADIO_SERVER_PORT"] = "7860"
 os.environ["GRADIO_SERVER_NAME"] = "0.0.0.0"
 
 import gradio as gr
-from starlette.middleware.cors import CORSMiddleware
 from backend.app.presentation.main import app as fastapi_app
 from backend.app.presentation.api.v1.router import api_v1_router
 
@@ -45,7 +44,7 @@ with gr.Blocks(title="Mnemos — Cognitive Memory AI Engine") as demo:
     inp.submit(fn=echo_status, inputs=inp, outputs=out)
 
 if __name__ == "__main__":
-    # Launch Gradio server in non-blocking mode first so ZeroGPU hooks register cleanly
+    # Launch Gradio server in non-blocking mode so ZeroGPU hooks register cleanly on 0.0.0.0:7860
     demo.launch(server_name="0.0.0.0", server_port=7860, prevent_thread_lock=True)
     
     # Attach all FastAPI routes to demo.app (the active running server)
@@ -54,15 +53,6 @@ if __name__ == "__main__":
             demo.app.add_api_route(r.path, r.endpoint, methods=r.methods)
             
     demo.app.include_router(api_v1_router, prefix="/api/v1")
-    
-    # Enable CORS for Next.js frontend on Vercel
-    demo.app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
     
     # Keep server alive
     demo.block_thread()
