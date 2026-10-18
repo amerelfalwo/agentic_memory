@@ -10,6 +10,17 @@ import uvicorn
 import gradio as gr
 from backend.app.presentation.main import app as fastapi_app
 
+# ZeroGPU support for Hugging Face Spaces
+try:
+    import spaces
+    @spaces.GPU
+    def _zerogpu_runner():
+        """Satisfies Hugging Face ZeroGPU startup validation."""
+        return True
+except (ImportError, Exception):
+    _zerogpu_runner = None
+
+
 # Interactive Dashboard for Hugging Face Space visitors
 with gr.Blocks(title="Mnemos — Cognitive Memory AI Engine") as demo:
     gr.Markdown("""
