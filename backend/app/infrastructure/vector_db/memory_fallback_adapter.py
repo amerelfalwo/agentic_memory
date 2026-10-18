@@ -27,8 +27,8 @@ class InMemoryVectorAdapter(IVectorDBPort):
                 conversation="USER: Can you explain the difference between working and episodic memory in agents?\nASSISTANT: Working memory holds immediate active context and dialogue state, whereas episodic memory records past experiences, reflection tags, and what worked or what to avoid.",
                 context_tags=["memory_types", "coala_architecture", "conceptual"],
                 conversation_summary="Comparison between working and episodic memory in agent cognitive systems.",
-                what_worked="Clear categorization using CoALA framework definitions.",
-                what_to_avoid="Conflating short-term conversational context with persistent episodic reflections."
+                what_worked="Direct, conversational, natural explanation without unnecessary architectural jargon or emojis.",
+                what_to_avoid="Unsolicited architectural disclaimers, generic capability lists, emojis, and robotic phrasing."
             )
         )
         self._episodic_store.append(

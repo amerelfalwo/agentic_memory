@@ -124,7 +124,8 @@ class SnapshotCoordinatorService:
         clean = text.strip().lower()
         simple_phrases = {
             "hi", "hello", "hey", "hola", "yo", "sup", "greetings", "good morning", "good evening",
-            "مرحبا", "اهلا", "أهلا", "سلام", "السلام عليكم", "صباح الخير", "مساء الخير", "يا هلا",
+            "مرحبا", "اهلا", "أهلا", "سلام", "السلام عليكم", "صباح الخير", "مساء الخير", "يا هلا", "هلا والله", "هلا",
+            "معلم", "يا معلم", "حبيبي", "يا غالي", "غالي", "باشا", "يا باشا", "كبير", "يا كبير", "صباح الورد", "مساء الورد",
             "thanks", "thank you", "thx", "شكرا", "مشكور", "تسلم", "يعطيك العافية", "ألف شكر",
             "ok", "okay", "cool", "fine", "تمام", "ماشي", "حسنا", "حلو", "عظيم", "ممتاز",
             "bye", "goodbye", "مع السلامة", "باي", "يلا باي",
@@ -135,8 +136,8 @@ class SnapshotCoordinatorService:
 
         acknowledgments = (
             "thanks", "thank you", "thx", "شكرا", "مشكور", "تسلم", "يعطيك العافية",
-            "hi ", "hello ", "hey ", "مرحبا ", "اهلا ", "أهلا ", "سلام ",
-            "great", "cool", "nice", "ok", "okay", "تمام", "ممتاز"
+            "hi ", "hello ", "hey ", "مرحبا ", "اهلا ", "أهلا ", "سلام ", "هلا ",
+            "great", "cool", "nice", "ok", "okay", "تمام", "ممتاز", "معلم ", "يا معلم "
         )
         keywords = ["coala", "memory", "rag", "vector", "episodic", "procedural", "semantic", "architecture", "guardrail", "agent", "paper", "concept", "framework"]
         if clean.startswith(acknowledgments) and not any(k in clean for k in keywords):
@@ -181,10 +182,10 @@ class SnapshotCoordinatorService:
         if is_simple:
             matched_episodic = None
             semantic_chunks = []
-            semantic_summary = "Conversational greeting turn."
+            semantic_summary = "Casual conversational interaction."
             prior_convo = "N/A"
-            what_worked = "Provide direct, warm, concise assistance."
-            what_to_avoid = "Overcomplicating simple conversational greetings."
+            what_worked = "Respond warmly, concisely, and conversationally in the user's language without mentioning architecture, without emojis, and without generic bullet lists."
+            what_to_avoid = "Using emojis, mentioning CoALA or cognitive architecture, listing generic features, or sounding robotic."
         else:
             # Memory Recall Phase (concurrent retrieval for substantive queries)
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -201,8 +202,8 @@ class SnapshotCoordinatorService:
                 timing_data["stages"]["semantic_search"] += (time.perf_counter() - t_sem_start) * 1000
 
             prior_convo = matched_episodic.conversation if matched_episodic else "N/A"
-            what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear factual responses."
-            what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations."
+            what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear, interactive, and emoji-free responses."
+            what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations, robotic repetition, or unprompted architecture lectures."
 
             semantic_text_parts = []
             if semantic_chunks:
@@ -217,17 +218,24 @@ class SnapshotCoordinatorService:
         current_procedural = self.procedural_repo.get_snapshot().raw_text
 
         # 4. Construct System Prompt with multi-tier memories
-        sys_content = f"""You are Mnemos, an advanced Cognitive Memory AI Agent built on the CoALA framework.
+        sys_content = f"""You are Mnemos, an intelligent, highly engaging, and interactive AI assistant with continuous cognitive memory.
+
+CORE BEHAVIORAL DIRECTIVES (STRICTLY ENFORCED):
+1. ENGAGING & INTERACTIVE: Respond conversationally, naturally, and warmly in the user's language (Arabic, English, etc.). Match their exact tone and formality. Be interactive: answer directly and ask thoughtful, relevant follow-up questions when helpful.
+2. ZERO EMOJIS: Never use emojis anywhere in your replies under any circumstance (no exceptions).
+3. NEVER MENTION THE ARCHITECTURE UNPROMPTED: Do NOT mention CoALA, cognitive architectures, memory layers, or internal mechanics unless the user explicitly asks how your system is built. Never introduce yourself as "مساعد ذكاء اصطناعي معرفي مبني على إطار CoALA".
+4. GREETINGS & CASUAL TURNS: When the user sends greetings or casual words (such as "معلم", "مرحبا", "أهلاً", "سلام", "صباح الخير", "مساء الخير", "hi", "hey"), respond naturally and warmly in 1-2 friendly conversational sentences (e.g., "أهلاً بك يا غالي! كيف أقدر أساعدك اليوم؟" or "يا هلا، معاك يا معلم. تحب نبدأ في إيه؟"). Never output rigid bullet lists or lecturing introductions on greetings.
+5. HIGH SIGNAL & DIRECT VALUE: Focus immediately on answering the user's intent. Keep formatting clean, focused, and scannable.
 
 [Episodic Memory (Past Learnings & Experiences)]
 - Matched Prior Case: {prior_convo}
 - What Worked Well: {what_worked}
 - What to Avoid: {what_to_avoid}
 
-[Procedural Memory Guidelines]
+[Procedural Guidelines]
 {current_procedural}
 
-[Semantic Memory Grounding (CoALA Knowledge Base)]
+[Knowledge Grounding]
 {semantic_summary}
 """
 

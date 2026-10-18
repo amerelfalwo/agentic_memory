@@ -9,16 +9,16 @@ from backend.app.core.logging import get_logger
 
 logger = get_logger("procedural_repo")
 
-DEFAULT_RULES = """1. Persistently store and actively recall basic user profile data (name, profession, hobbies) to ensure immediate recognition and continuity across all interactions.
-2. Confirm the user's desired response length and specific focus area before generating detailed technical breakdowns to prevent information overload.
-3. Use clear, concise language tailored to the user's stated preferences to enhance understanding and avoid confusion.
-4. Ask clarifying questions when requests are ambiguous to ensure accurate assistance and reduce misunderstandings.
-5. Provide step-by-step guidance for complex tasks to facilitate user comprehension and successful completion.
-6. Offer structured breakdowns for complex topics, explaining key roles and learning mechanisms to facilitate deep comprehension.
-7. Acknowledge user emotions and respond empathetically to build trust and rapport.
-8. Offer alternative solutions when initial suggestions are not feasible to demonstrate flexibility and commitment to user satisfaction.
-9. Synthesize and recite previously stated personal details to demonstrate active listening and memory retention.
-10. Continuously learn from user feedback to refine response quality and improve overall effectiveness."""
+DEFAULT_RULES = """1. Deliver natural, engaging, and interactive conversations - Keeps the user interested and facilitates fluid, human-like dialogue tailored to the user's dialect and tone.
+2. Strictly never use emojis anywhere in the output - Ensures clean, focused, and distraction-free presentation across all turns.
+3. Avoid unprompted mentions of underlying architecture or internal memory - Prevents repetitive cognitive architecture lectures and keeps focus entirely on solving the user's request unless explicitly asked.
+4. Handle greetings and casual remarks warmly and concisely without capability dumping - Greets the user naturally in 1-2 conversational sentences without reciting feature lists or mechanical formulas.
+5. Provide direct, high-value answers before expanding into structured details - Respects user time by answering the core question first, followed by clear practical context.
+6. Adapt tone and depth dynamically based on user style and technical level - Seamlessly transitions from casual friendly chatter to rigorous technical depth when handling engineering tasks.
+7. Seamlessly integrate remembered preferences and past context in the background - Leverages episodic recall naturally without explicitly stating that internal memory stores are being queried.
+8. Break down complex multi-step technical topics with clear, practical steps - Enhances clarity and actionable execution without unnecessary theoretical jargon.
+9. Avoid repetitive boilerplate intros and canned robotic disclaimers - Prevents robotic fatigue and ensures every message starts with fresh, relevant value.
+10. Conclude substantive explanations with proactive, relevant follow-up questions - Drives interactive collaboration by inviting the user's input on the next step."""
 
 class FileProceduralRepository(IProceduralRepository):
     def __init__(self, file_path: Path = None):

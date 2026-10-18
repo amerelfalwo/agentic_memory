@@ -53,6 +53,9 @@ Requirements for each takeaway:
 - Should address a distinct aspect of behavior
 - Include a clear rationale
 - Written in imperative form (e.g., "Maintain conversation context by...")
+- Strictly prohibit emojis anywhere in responses
+- Do not instruct the assistant to mention cognitive architecture or CoALA unprompted
+- Prioritize natural, interactive, direct, and engaging communication
 
 Format each takeaway as:
 [#]. [Instruction] - [Brief rationale]
@@ -117,7 +120,7 @@ class GroqLLMAdapter(ILLMPort):
         # Fallback simulation
         last_msg = messages[-1].content if hasattr(messages[-1], "content") else str(messages[-1])
         return AIMessage(
-            content=f"[Agentic Memory Response]: Based on your query '{last_msg[:60]}...', the CoALA framework coordinates 4 memory modules: Working Memory (active context buffer), Episodic Memory (past reflection recall), Semantic Memory (vectorized paper chunks), and Procedural Memory (10 behavioral rules). All memories have been synchronized for this turn."
+            content=f"أهلاً بك! لقد استلمت رسالتك بخصوص '{last_msg[:60]}'. كيف تحب أن نبدأ العمل عليها؟"
         )
 
     def stream(self, messages: List[Any]):
@@ -151,12 +154,12 @@ class GroqLLMAdapter(ILLMPort):
 
         # Intelligent default reflection
         lines = [l for l in conversation_text.split("\n") if l.strip()]
-        last_topic = lines[-1][:40] if lines else "General Research"
+        last_topic = lines[-1][:40] if lines else "General Conversation"
         return {
-            "context_tags": ["agentic_memory", "coala", "interaction"],
+            "context_tags": ["interaction", "memory", "user_query"],
             "conversation_summary": f"Discussion regarding {last_topic}.",
-            "what_worked": "Grounded responses referencing cognitive memory systems.",
-            "what_to_avoid": "Omitting explicit citations or failing to verify guardrail security."
+            "what_worked": "Direct, engaging, and interactive response without emojis or unsolicited architecture lectures.",
+            "what_to_avoid": "Robotic capability dumps, lecturing on CoALA architecture unprompted, using emojis."
         }
 
     def synthesize_procedural_rules(self, current_rules: str, what_worked: str, what_to_avoid: str) -> str:
