@@ -34,8 +34,8 @@ export const AppHeader: React.FC = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Brand & Framework */}
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-md bg-[#0F766E] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-sm">
-            MN
+          <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#0F766E]/20 bg-[#0b0f10] shadow-sm flex items-center justify-center shrink-0">
+            <img src="/brand/icon-64.png" alt="Mnemos Logo" className="w-full h-full object-cover" />
           </div>
           <div className="flex items-center space-x-2">
             <span className="font-semibold text-[#242A25] tracking-tight text-sm sm:text-base">

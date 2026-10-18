@@ -17,6 +17,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Mnemos — Cognitive Memory AI Engine | CoALA Architecture",
   description: "Mnemos Enterprise Cognitive Memory AI Agent with LangGraph and Weaviate",
+  icons: {
+    icon: "/brand/favicon-32.png",
+    apple: "/brand/icon-128.png",
+  },
 };
 
 export default function RootLayout({
