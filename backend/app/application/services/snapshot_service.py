@@ -1,5 +1,6 @@
 import time
 import json
+import re
 import concurrent.futures
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
@@ -178,14 +179,19 @@ class SnapshotCoordinatorService:
 
         # 2. Fast-path check for simple greetings to deliver instant sub-second response
         is_simple = self._is_simple_greeting(user_input)
+        has_arabic = bool(re.search(r'[\u0600-\u06FF]', user_input))
 
         if is_simple:
             matched_episodic = None
             semantic_chunks = []
             semantic_summary = "Casual conversational interaction."
             prior_convo = "N/A"
-            what_worked = "Respond warmly, concisely, and conversationally in the user's language without mentioning architecture, without emojis, and without generic bullet lists."
-            what_to_avoid = "Using emojis, mentioning CoALA or cognitive architecture, listing generic features, or sounding robotic."
+            if has_arabic:
+                what_worked = "Respond warmly, concisely, and naturally in Egyptian or Modern Standard Arabic matching the user dialect without emojis, without foreign/Khaleeji slang, and without mentioning architecture."
+                what_to_avoid = "Using emojis, unnatural regional slang (like 'وش أسوي لك'), mentioning CoALA or cognitive architecture, listing generic features, or sounding robotic."
+            else:
+                what_worked = "Respond warmly, concisely, and conversationally in English without emojis and without mentioning architecture."
+                what_to_avoid = "Replying in Arabic to English input, using emojis, mentioning CoALA or cognitive architecture, listing generic features, or sounding robotic."
         else:
             # Memory Recall Phase (concurrent retrieval for substantive queries)
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -202,8 +208,8 @@ class SnapshotCoordinatorService:
                 timing_data["stages"]["semantic_search"] += (time.perf_counter() - t_sem_start) * 1000
 
             prior_convo = matched_episodic.conversation if matched_episodic else "N/A"
-            what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear, interactive, and emoji-free responses."
-            what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations, robotic repetition, or unprompted architecture lectures."
+            what_worked = matched_episodic.what_worked if matched_episodic else "Maintain clear, interactive, and emoji-free responses in the exact language of the user."
+            what_to_avoid = matched_episodic.what_to_avoid if matched_episodic else "Avoid hallucinations, robotic repetition, language mismatches, or unprompted architecture lectures."
 
             semantic_text_parts = []
             if semantic_chunks:
@@ -221,11 +227,15 @@ class SnapshotCoordinatorService:
         sys_content = f"""You are Mnemos, an intelligent, highly engaging, and interactive AI assistant with continuous cognitive memory.
 
 CORE BEHAVIORAL DIRECTIVES (STRICTLY ENFORCED):
-1. ENGAGING & INTERACTIVE: Respond conversationally, naturally, and warmly in the user's language (Arabic, English, etc.). Match their exact tone and formality. Be interactive: answer directly and ask thoughtful, relevant follow-up questions when helpful.
+1. STRICT LANGUAGE & DIALECT MIRRORING:
+   - If the user addresses you in ENGLISH, you MUST respond in ENGLISH (e.g. "hi" -> "Hello! How can I help you today?"). Never reply in Arabic to English input.
+   - If the user addresses you in ARABIC, you MUST respond in ARABIC:
+     * When the user speaks in Egyptian Arabic or uses casual Egyptian terms (e.g., "معلم", "إزيك", "عامل إيه", "تمام", "يا باشا", "كبير"), respond in natural, friendly Egyptian Arabic (e.g., "يا هلا يا معلم! إزيك، تحب نبدأ في إيه النهاردة؟" or "أهلاً بيك يا باشا، أقدر أساعدك إزاي؟").
+     * When the user speaks in Modern Standard Arabic (فصحى) or asks general questions, respond in fluent, clear Modern Standard Arabic. Never force Gulf/Khaleeji phrases (like "وش أقدر أسوي لك" or "وش تبغى") unless the user explicitly speaks that dialect.
 2. ZERO EMOJIS: Never use emojis anywhere in your replies under any circumstance (no exceptions).
 3. NEVER MENTION THE ARCHITECTURE UNPROMPTED: Do NOT mention CoALA, cognitive architectures, memory layers, or internal mechanics unless the user explicitly asks how your system is built. Never introduce yourself as "مساعد ذكاء اصطناعي معرفي مبني على إطار CoALA".
-4. GREETINGS & CASUAL TURNS: When the user sends greetings or casual words (such as "معلم", "مرحبا", "أهلاً", "سلام", "صباح الخير", "مساء الخير", "hi", "hey"), respond naturally and warmly in 1-2 friendly conversational sentences (e.g., "أهلاً بك يا غالي! كيف أقدر أساعدك اليوم؟" or "يا هلا، معاك يا معلم. تحب نبدأ في إيه؟"). Never output rigid bullet lists or lecturing introductions on greetings.
-5. HIGH SIGNAL & DIRECT VALUE: Focus immediately on answering the user's intent. Keep formatting clean, focused, and scannable.
+4. GREETINGS & CASUAL TURNS: For short greetings, respond in 1-2 friendly, natural sentences in the exact language of the user. Never dump bullet lists of capabilities or lecture the user.
+5. HIGH SIGNAL & DIRECT VALUE: Focus immediately on answering the user's actual question or intent with high clarity and helpfulness.
 
 [Episodic Memory (Past Learnings & Experiences)]
 - Matched Prior Case: {prior_convo}
