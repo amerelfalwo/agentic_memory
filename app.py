@@ -7,6 +7,8 @@ os.environ["GRADIO_SERVER_PORT"] = "7860"
 os.environ["GRADIO_SERVER_NAME"] = "0.0.0.0"
 
 import gradio as gr
+from gradio.routes import App
+from starlette.middleware.cors import CORSMiddleware
 from backend.app.presentation.main import app as fastapi_app
 from backend.app.presentation.api.v1.router import api_v1_router
 
@@ -43,16 +45,17 @@ with gr.Blocks(title="Mnemos — Cognitive Memory AI Engine") as demo:
     btn.click(fn=echo_status, inputs=inp, outputs=out)
     inp.submit(fn=echo_status, inputs=inp, outputs=out)
 
-# Mount FastAPI routes onto demo.app
+# Create Gradio App instance and attach all FastAPI routes
+my_app = App.create_app(demo)
+
 for r in fastapi_app.routes:
     if hasattr(r, "endpoint") and hasattr(r, "path"):
-        demo.app.add_api_route(r.path, r.endpoint, methods=r.methods)
+        my_app.add_api_route(r.path, r.endpoint, methods=r.methods)
 
-demo.app.include_router(api_v1_router, prefix="/api/v1")
+my_app.include_router(api_v1_router, prefix="/api/v1")
 
-# Also add CORS middleware to demo.app
-from starlette.middleware.cors import CORSMiddleware
-demo.app.add_middleware(
+# Add CORS middleware to allow requests from Vercel frontend
+my_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -61,4 +64,4 @@ demo.app.add_middleware(
 )
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(_app=my_app, server_name="0.0.0.0", server_port=7860)
