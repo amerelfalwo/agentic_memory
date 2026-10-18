@@ -16,7 +16,7 @@ export function getApiBase(): string {
       return 'http://localhost:8000/api/v1';
     }
   }
-  return 'https://mnemos-backend-ehi5.onrender.com/api/v1';
+  return 'https://amer003100-mnemos.hf.space/api/v1';
 }
 
 const API_BASE = getApiBase();
