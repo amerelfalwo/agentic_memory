@@ -6,9 +6,20 @@ os.environ["GRADIO_SSR_MODE"] = "false"
 os.environ["GRADIO_SERVER_PORT"] = "7860"
 os.environ["GRADIO_SERVER_NAME"] = "0.0.0.0"
 
-import uvicorn
 import gradio as gr
 from backend.app.presentation.main import app as fastapi_app
+from backend.app.presentation.api.v1.router import api_v1_router
+
+# ZeroGPU decorator for Hugging Face Spaces (zero-a10g hardware requires at least one registered event fn)
+try:
+    import spaces
+    @spaces.GPU
+    def echo_status(prompt: str) -> str:
+        """ZeroGPU registered handler to satisfy Hugging Face startup validation."""
+        return f"Mnemos Cognitive Engine is online! Echo: {prompt}"
+except Exception:
+    def echo_status(prompt: str) -> str:
+        return f"Mnemos Cognitive Engine is online! Echo: {prompt}"
 
 # Interactive Dashboard for Hugging Face Space visitors
 with gr.Blocks(title="Mnemos — Cognitive Memory AI Engine") as demo:
@@ -23,12 +34,25 @@ with gr.Blocks(title="Mnemos — Cognitive Memory AI Engine") as demo:
     - ⚡ **API Base Endpoint**: `/api/v1`
     - 🌐 **Production Frontend**: [https://rapid-geode-upm1g2t.vercel.app](https://rapid-geode-upm1g2t.vercel.app)
     """)
-
-# Mount Gradio onto the existing FastAPI application
-app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+    
+    with gr.Row():
+        inp = gr.Textbox(label="Test Prompt", placeholder="Say hello to Mnemos...", scale=4)
+        btn = gr.Button("Send Probe", variant="primary", scale=1)
+    out = gr.Textbox(label="Backend Response", interactive=False)
+    
+    btn.click(fn=echo_status, inputs=inp, outputs=out)
+    inp.submit(fn=echo_status, inputs=inp, outputs=out)
 
 if __name__ == "__main__":
-    # Hugging Face Spaces expects traffic strictly on port 7860.
-    # Do NOT read dynamic $PORT, as HF container environment may pass auxiliary proxy ports (e.g. 7861)
-    uvicorn.run(app, host="0.0.0.0", port=7860)
-
+    # Launch Gradio server in non-blocking mode so ZeroGPU hooks register cleanly on 0.0.0.0:7860
+    demo.launch(server_name="0.0.0.0", server_port=7860, prevent_thread_lock=True)
+    
+    # Attach all FastAPI routes to demo.app (the active running server)
+    for r in fastapi_app.routes:
+        if hasattr(r, "endpoint") and hasattr(r, "path"):
+            demo.app.add_api_route(r.path, r.endpoint, methods=r.methods)
+            
+    demo.app.include_router(api_v1_router, prefix="/api/v1")
+    
+    # Keep server alive
+    demo.block_thread()
