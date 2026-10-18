@@ -17,11 +17,12 @@
 2. اضغط على صورتك الشخصية واختر **New Space** أو توجه مباشرة إلى:
    👉 **[https://huggingface.co/new-space](https://huggingface.co/new-space)**
 3. املأ البيانات كالتالي:
-   - **Space name**: مثلاً `mnemos-backend` أو `agentic-memory`
+   - **Owner**: حسابك (مثلاً: `amer003100`)
+   - **Space name**: مثلاً `Mnemos`
    - **License**: `apache-2.0` أو `mit`
-   - **Select the Space SDK**: اختر **Docker** 🐳 ثم **Blank**.
-   - **Space hardware**: اختر **CPU basic · 2 vCPU · 16 GB · Free** (كافٍ جداً ومجاني).
-   - **Visibility**: اختر **Public** (ليتمكن الفرونت إند من الاتصال به).
+   - **Select the Space SDK**: اختر **Gradio** 🟧 (مجاني بالكامل وبدون بطاقة ائتمان، على عكس Docker المقفول للخطط المدفوعة).
+   - **Space hardware**: اختر **CPU basic · 2 vCPU · 16 GB · Free** (مجاني 100%).
+   - **Visibility**: اختر **Public**.
 4. اضغط على **Create Space**.
 
 ---
